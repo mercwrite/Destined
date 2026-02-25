@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(npx expo install react-native-url-polyfill)",
+      "Bash(npx expo export --platform web)"
+    ]
+  }
+}
