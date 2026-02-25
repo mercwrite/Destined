@@ -1,0 +1,1 @@
+This repository is a react-native expo app utilizing supabase. This is for an application called destined, which is a dating app.
