@@ -5,9 +5,22 @@ import { HelloWave } from '@/components/hello-wave';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { supabase } from '@/utils/supabase';
 import { Link } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 export default function HomeScreen() {
+
+  const [name, setName] = useState<any[]>([]);
+
+  useEffect(()=> {
+    getNames();
+  }, []);
+
+  async function getNames(){
+    const { data } = await supabase.from('test').select();
+    setName(data ?? []);
+  }
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
