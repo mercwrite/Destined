@@ -12,20 +12,33 @@ Destined has five main tabs: Swipe, Likes, Matches, User profile/Stats , and App
 ## Project Structure
 ```
 app/
-├── _layout.tsx              # Root Stack (headerShown: false)
+├── _layout.tsx              # Root layout with AuthContext provider & auth guard
 ├── index.tsx                # Redirects to /(tabs)/swipe
+├── (auth)/
+│   ├── _layout.tsx          # Auth stack layout
+│   ├── welcome.tsx          # Welcome/landing screen
+│   ├── sign-in.tsx          # Sign in screen
+│   ├── sign-up.tsx          # Sign up screen
+│   └── forgot-password.tsx  # Password reset screen
 └── (tabs)/
     ├── _layout.tsx          # Tab layout — adaptive per platform
     ├── swipe.tsx            # Swipe tab (main swiping area)
     ├── likes.tsx            # Likes tab
     ├── matches.tsx          # Matches tab
-    ├── profile.tsx          # User Profile & Stats tab
+    ├── profile.tsx          # User Profile editing (photos, bio, fields)
     └── settings.tsx         # Settings tab
 components/
 ├── WebHeader.tsx            # "Destined" header bar (web/desktop only)
+├── ProfileAvatar.tsx        # Circular avatar with name & age display
+├── PhotoGrid.tsx            # 3x3 draggable photo grid (gesture-handler + reanimated)
+├── PhotoGridItem.tsx        # Single photo grid cell (empty/occupied states)
 hooks/                       # Custom hooks (empty)
 utils/
 ├── supabase.ts              # Supabase client init
+Context/
+├── FUNCREQ.md               # Functional requirements document
+├── AuthPlan.md              # Auth implementation plan & DB schema
+├── ProfilePlan.md           # Profile page implementation plan
 ```
 ## UI Conventions
 - All text input fields should be rounded and grey, with white borders

@@ -15,7 +15,7 @@ The application shall require new users to confirm their email address or phone 
 3.2 User Profile and Editing Interface
 FR-PROF-001:	
 The application shall allow users to create and edit their profile, including the following fields: Name, Age, Location, Gender, Desired Destination/Activity, Bio, Hobbies/Interests, Photos, Photo Order, and Desired Relationship Type (e.g., short-term, long-term, monogamy).	
-FR-PROF-001: 
+FR-PROF-002: 
 The application shall track analytics for each user photo, including swipe-left rate, swipe-right rate, and total impressions.	
 FR-PROF-003: 
 The application shall display photo analytics to the user within the profile editing interface.	
