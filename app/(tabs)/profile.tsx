@@ -3,23 +3,26 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/app/_layout";
 import { supabase } from "@/utils/supabase";
-import ProfileAvatar from "@/components/ProfileAvatar";
 import PhotoGrid from "@/components/PhotoGrid";
-import ProfileCard from "@/components/ProfileCard";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { AppText } from "@/components/Text";
+import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { Chip } from "@/components/Chip";
+import { colors, radii, spacing, typography } from "@/theme";
 import type { ProfilePhoto } from "@/components/PhotoGridItem";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type Profile = {
   id: string;
@@ -43,12 +46,17 @@ type FormState = {
   relationship_type: string;
 };
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 
 const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Other"];
 const RELATIONSHIP_OPTIONS = ["Short-term", "Long-term", "Casual", "Open"];
+const PRESET_HOBBIES = [
+  "Hiking", "Coffee", "Surf", "Climbing", "Cooking", "Pottery",
+  "Live music", "Film", "Art", "Tennis", "Running", "Yoga",
+  "Reading", "Wine",
+];
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function extractStoragePath(publicUrl: string): string {
   const marker = "/object/public/photos/";
@@ -65,7 +73,7 @@ function generateUUID(): string {
   });
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
   const { session } = useAuth();
@@ -90,7 +98,7 @@ export default function ProfileScreen() {
     relationship_type: "",
   });
 
-  // ── Data Loading ─────────────────────────────────────────────────────────
+  // ── Data loading ───────────────────────────────────────────────────────────
 
   const loadData = useCallback(async () => {
     if (!userId) return;
@@ -99,11 +107,7 @@ export default function ProfileScreen() {
 
     const [profileRes, photosRes] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).single(),
-      supabase
-        .from("profile_photos")
-        .select("*")
-        .eq("profile_id", userId)
-        .order("display_order"),
+      supabase.from("profile_photos").select("*").eq("profile_id", userId).order("display_order"),
     ]);
 
     if (profileRes.error) {
@@ -122,33 +126,13 @@ export default function ProfileScreen() {
       });
     }
 
-    if (photosRes.data) {
-      setPhotos(photosRes.data as ProfilePhoto[]);
-    }
-
+    if (photosRes.data) setPhotos(photosRes.data as ProfilePhoto[]);
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Preview Data ─────────────────────────────────────────────────────────
-
-  const previewData = useMemo(() => ({
-    id: profile?.id ?? "",
-    name: form.name || null,
-    date_of_birth: profile?.date_of_birth ?? null,
-    bio: form.bio || null,
-    location_city: form.location_city || null,
-    gender: form.gender || null,
-    destination: form.destination || null,
-    hobbies: form.hobbies.length > 0 ? form.hobbies : null,
-    relationship_type: form.relationship_type || null,
-    photos,
-  }), [form, photos, profile?.id, profile?.date_of_birth]);
-
-  // ── Change Detection ─────────────────────────────────────────────────────
+  // ── Change detection ───────────────────────────────────────────────────────
 
   const hasChanges = useMemo(() => {
     if (!profile) return false;
@@ -159,12 +143,11 @@ export default function ProfileScreen() {
       form.destination !== (profile.destination ?? "") ||
       form.bio !== (profile.bio ?? "") ||
       form.relationship_type !== (profile.relationship_type ?? "") ||
-      JSON.stringify(form.hobbies) !==
-        JSON.stringify(profile.hobbies ?? [])
+      JSON.stringify(form.hobbies) !== JSON.stringify(profile.hobbies ?? [])
     );
   }, [form, profile]);
 
-  // ── Photo Handlers ───────────────────────────────────────────────────────
+  // ── Photo handlers ─────────────────────────────────────────────────────────
 
   async function handleAddPhoto(_slotIndex: number) {
     if (!userId || photoLoading) return;
@@ -181,7 +164,6 @@ export default function ProfileScreen() {
     });
 
     if (result.canceled || !result.assets[0]) return;
-
     setPhotoLoading(true);
     setError(null);
 
@@ -190,29 +172,23 @@ export default function ProfileScreen() {
       const fileExt = asset.uri.split(".").pop()?.split("?")[0] ?? "jpg";
       const fileName = `${userId}/${generateUUID()}.${fileExt}`;
 
-      // Fetch as blob for upload
       const response = await fetch(asset.uri);
       const blob = await response.blob();
 
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(fileName, blob, {
-          contentType: asset.mimeType ?? "image/jpeg",
-        });
+        .upload(fileName, blob, { contentType: asset.mimeType ?? "image/jpeg" });
 
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage
-        .from("photos")
-        .getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from("photos").getPublicUrl(fileName);
 
-      const newOrder = photos.length;
       const { data: photoRow, error: insertError } = await supabase
         .from("profile_photos")
         .insert({
           profile_id: userId,
           url: urlData.publicUrl,
-          display_order: newOrder,
+          display_order: photos.length,
           impressions: 0,
           swipe_left: 0,
           swipe_right: 0,
@@ -221,7 +197,6 @@ export default function ProfileScreen() {
         .single();
 
       if (insertError) throw insertError;
-
       setPhotos((prev) => [...prev, photoRow as ProfilePhoto]);
     } catch (err: any) {
       setError(err.message ?? "Failed to upload photo.");
@@ -233,12 +208,9 @@ export default function ProfileScreen() {
   async function handleDeletePhoto(photo: ProfilePhoto) {
     setPhotoLoading(true);
     setError(null);
-
     try {
       const path = extractStoragePath(photo.url);
-      if (path) {
-        await supabase.storage.from("photos").remove([path]);
-      }
+      if (path) await supabase.storage.from("photos").remove([path]);
 
       const { error: deleteError } = await supabase
         .from("profile_photos")
@@ -247,19 +219,13 @@ export default function ProfileScreen() {
 
       if (deleteError) throw deleteError;
 
-      // Remove locally and re-normalize order
       const remaining = photos
         .filter((p) => p.id !== photo.id)
         .map((p, i) => ({ ...p, display_order: i }));
 
-      // Update order in DB
       for (const p of remaining) {
-        await supabase
-          .from("profile_photos")
-          .update({ display_order: p.display_order })
-          .eq("id", p.id);
+        await supabase.from("profile_photos").update({ display_order: p.display_order }).eq("id", p.id);
       }
-
       setPhotos(remaining);
     } catch (err: any) {
       setError(err.message ?? "Failed to delete photo.");
@@ -270,20 +236,16 @@ export default function ProfileScreen() {
 
   async function handleReorder(reorderedPhotos: ProfilePhoto[]) {
     setPhotos(reorderedPhotos);
-
     try {
       for (const p of reorderedPhotos) {
-        await supabase
-          .from("profile_photos")
-          .update({ display_order: p.display_order })
-          .eq("id", p.id);
+        await supabase.from("profile_photos").update({ display_order: p.display_order }).eq("id", p.id);
       }
     } catch (err: any) {
       setError(err.message ?? "Failed to reorder photos.");
     }
   }
 
-  // ── Save Handler ─────────────────────────────────────────────────────────
+  // ── Save ───────────────────────────────────────────────────────────────────
 
   async function handleSave() {
     if (!userId || !hasChanges) return;
@@ -327,363 +289,280 @@ export default function ProfileScreen() {
     }
   }
 
-  // ── Hobby Helpers ────────────────────────────────────────────────────────
+  // ── Hobby helpers ──────────────────────────────────────────────────────────
 
-  function addHobby() {
-    const trimmed = hobbyInput.trim();
-    if (!trimmed || form.hobbies.includes(trimmed)) {
-      setHobbyInput("");
-      return;
-    }
-    setForm((prev) => ({ ...prev, hobbies: [...prev.hobbies, trimmed] }));
-    setHobbyInput("");
-  }
-
-  function removeHobby(hobby: string) {
-    setForm((prev) => ({
-      ...prev,
-      hobbies: prev.hobbies.filter((h) => h !== hobby),
+  function toggleHobby(hobby: string) {
+    setForm((d) => ({
+      ...d,
+      hobbies: d.hobbies.includes(hobby)
+        ? d.hobbies.filter((h) => h !== hobby)
+        : [...d.hobbies, hobby],
     }));
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  function addCustomHobby() {
+    const trimmed = hobbyInput.trim();
+    if (!trimmed || form.hobbies.includes(trimmed)) { setHobbyInput(""); return; }
+    setForm((d) => ({ ...d, hobbies: [...d.hobbies, trimmed] }));
+    setHobbyInput("");
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4291db" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
-  const firstPhotoUrl = photos.length > 0 ? photos[0].url : null;
-
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      scrollEnabled={scrollEnabled}
-      keyboardShouldPersistTaps="handled"
-    >
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
-      {/* Profile Preview */}
-      <Text style={styles.sectionTitle}>Preview</Text>
-      <Text style={styles.previewSubtitle}>How others see your card</Text>
-      <View style={styles.previewContainer}>
-        <ProfileCard profile={previewData} />
-      </View>
-
-      {/* Avatar */}
-      <ProfileAvatar
-        photoUrl={firstPhotoUrl}
-        name={form.name || null}
-        dateOfBirth={profile?.date_of_birth ?? null}
-        onNameSave={(newName) => setForm((p) => ({ ...p, name: newName }))}
-      />
-
-      {/* Photo Grid */}
-      <Text style={styles.sectionTitle}>Photos</Text>
-      {photoLoading && (
-        <ActivityIndicator
-          size="small"
-          color="#4291db"
-          style={{ marginBottom: 8 }}
+    <View style={styles.root}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScreenHeader
+          eyebrow="Your profile"
+          title={form.name || "Edit profile"}
+          trailing={
+            saving ? <ActivityIndicator size="small" color={colors.accent} /> : null
+          }
         />
-      )}
-      <PhotoGrid
-        photos={photos}
-        onAddPhoto={handleAddPhoto}
-        onDeletePhoto={handleDeletePhoto}
-        onReorder={handleReorder}
-        onDragStart={() => setScrollEnabled(false)}
-        onDragEnd={() => setScrollEnabled(true)}
-        disabled={photoLoading}
-      />
 
-      {/* Profile Fields */}
-      <Text style={[styles.sectionTitle, { marginTop: 28 }]}>About You</Text>
-
-      {/* Location */}
-      <Text style={styles.fieldLabel}>Location</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="City or town"
-        placeholderTextColor="#BDBDBD"
-        value={form.location_city}
-        onChangeText={(v) => setForm((p) => ({ ...p, location_city: v }))}
-      />
-
-      {/* Gender */}
-      <Text style={styles.fieldLabel}>Gender</Text>
-      <View style={styles.pillRow}>
-        {GENDER_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt}
-            style={[
-              styles.pill,
-              form.gender === opt && styles.pillSelected,
-            ]}
-            onPress={() => setForm((p) => ({ ...p, gender: opt }))}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.pillText,
-                form.gender === opt && styles.pillTextSelected,
-              ]}
-            >
-              {opt}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Destination */}
-      <Text style={styles.fieldLabel}>Desired Destination / Activity</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="e.g. Paris, hiking, coffee date"
-        placeholderTextColor="#BDBDBD"
-        value={form.destination}
-        onChangeText={(v) => setForm((p) => ({ ...p, destination: v }))}
-      />
-
-      {/* Bio */}
-      <Text style={styles.fieldLabel}>Bio</Text>
-      <TextInput
-        style={[styles.input, styles.bioInput]}
-        placeholder="Tell others about yourself..."
-        placeholderTextColor="#BDBDBD"
-        multiline
-        numberOfLines={4}
-        maxLength={300}
-        textAlignVertical="top"
-        value={form.bio}
-        onChangeText={(v) => setForm((p) => ({ ...p, bio: v }))}
-      />
-      <Text style={styles.charCount}>{form.bio.length}/300</Text>
-
-      {/* Hobbies */}
-      <Text style={styles.fieldLabel}>Hobbies & Interests</Text>
-      <View style={styles.hobbyInputRow}>
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder="Add a hobby..."
-          placeholderTextColor="#BDBDBD"
-          value={hobbyInput}
-          onChangeText={setHobbyInput}
-          onSubmitEditing={addHobby}
-          returnKeyType="done"
-        />
-        <TouchableOpacity
-          style={styles.addHobbyButton}
-          onPress={addHobby}
-          activeOpacity={0.7}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          scrollEnabled={scrollEnabled}
+          keyboardShouldPersistTaps="handled"
         >
-          <Ionicons name="add-circle" size={28} color="#4291db" />
-        </TouchableOpacity>
-      </View>
-      {form.hobbies.length > 0 && (
-        <View style={styles.hobbyTags}>
-          {form.hobbies.map((h) => (
-            <View key={h} style={styles.hobbyTag}>
-              <Text style={styles.hobbyTagText}>{h}</Text>
-              <TouchableOpacity onPress={() => removeHobby(h)} hitSlop={6}>
-                <Ionicons name="close-circle" size={16} color="#9E9E9E" />
-              </TouchableOpacity>
+          {error ? (
+            <View style={styles.errorBanner}>
+              <AppText variant="bodySmall" color={colors.danger}>{error}</AppText>
             </View>
-          ))}
-        </View>
-      )}
+          ) : null}
 
-      {/* Relationship Type */}
-      <Text style={styles.fieldLabel}>Desired Relationship Type</Text>
-      <View style={styles.pillRow}>
-        {RELATIONSHIP_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt}
-            style={[
-              styles.pill,
-              form.relationship_type === opt && styles.pillSelected,
-            ]}
-            onPress={() =>
-              setForm((p) => ({ ...p, relationship_type: opt }))
-            }
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.pillText,
-                form.relationship_type === opt && styles.pillTextSelected,
-              ]}
-            >
-              {opt}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+          {/* Photos */}
+          <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
+            Photos
+          </AppText>
+          {photoLoading ? (
+            <ActivityIndicator size="small" color={colors.accent} style={{ marginBottom: spacing.sm }} />
+          ) : null}
+          <PhotoGrid
+            photos={photos}
+            onAddPhoto={handleAddPhoto}
+            onDeletePhoto={handleDeletePhoto}
+            onReorder={handleReorder}
+            onDragStart={() => setScrollEnabled(false)}
+            onDragEnd={() => setScrollEnabled(true)}
+            disabled={photoLoading}
+          />
 
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[
-          styles.saveButton,
-          (!hasChanges || saving) && styles.saveButtonDisabled,
-        ]}
-        onPress={handleSave}
-        disabled={!hasChanges || saving}
-        activeOpacity={0.85}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        )}
-      </TouchableOpacity>
+          {/* Destination — the hook */}
+          <AppText variant="label" color={colors.accent} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
+            ✦ Destination — your hook
+          </AppText>
+          <Card variant="warm" padding="lg">
+            <AppText variant="caption" color={colors.inkSoft}>Where do you want to go?</AppText>
+            <TextInput
+              value={form.destination}
+              onChangeText={(v) => setForm((p) => ({ ...p, destination: v }))}
+              placeholder="e.g. Lisbon, Tokyo, Joshua Tree"
+              placeholderTextColor={colors.inkFaint}
+              style={[styles.bigInput, { fontFamily: typography.serif }]}
+            />
+          </Card>
 
-      <View style={{ height: 40 }} />
-    </ScrollView>
+          {/* About You */}
+          <AppText variant="label" color={colors.inkSoft} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
+            About you
+          </AppText>
+          <Card variant="plain" padding="lg">
+            <AppText variant="caption" color={colors.inkSoft}>Name</AppText>
+            <TextInput
+              value={form.name}
+              onChangeText={(v) => setForm((p) => ({ ...p, name: v }))}
+              placeholder="Your name"
+              placeholderTextColor={colors.inkFaint}
+              style={styles.fieldInput}
+            />
+            <View style={styles.divider} />
+
+            <AppText variant="caption" color={colors.inkSoft}>Location</AppText>
+            <TextInput
+              value={form.location_city}
+              onChangeText={(v) => setForm((p) => ({ ...p, location_city: v }))}
+              placeholder="City or town"
+              placeholderTextColor={colors.inkFaint}
+              style={styles.fieldInput}
+            />
+            <View style={styles.divider} />
+
+            <AppText variant="caption" color={colors.inkSoft}>Bio</AppText>
+            <TextInput
+              value={form.bio}
+              onChangeText={(v) => setForm((p) => ({ ...p, bio: v }))}
+              placeholder="A few sentences about you"
+              placeholderTextColor={colors.inkFaint}
+              multiline
+              numberOfLines={4}
+              maxLength={300}
+              textAlignVertical="top"
+              style={[styles.fieldInput, { minHeight: 80 }]}
+            />
+            <AppText variant="caption" color={colors.inkFaint} align="right" style={{ marginTop: 4 }}>
+              {form.bio.length}/300
+            </AppText>
+          </Card>
+
+          {/* Gender */}
+          <AppText variant="label" color={colors.inkSoft} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
+            Gender
+          </AppText>
+          <View style={styles.chipWrap}>
+            {GENDER_OPTIONS.map((opt) => (
+              <Chip
+                key={opt}
+                label={opt}
+                selected={form.gender === opt}
+                onPress={() => setForm((p) => ({ ...p, gender: p.gender === opt ? "" : opt }))}
+              />
+            ))}
+          </View>
+
+          {/* Interests */}
+          <AppText variant="label" color={colors.inkSoft} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
+            Interests
+          </AppText>
+          <View style={styles.chipWrap}>
+            {PRESET_HOBBIES.map((h) => (
+              <Chip
+                key={h}
+                label={h}
+                selected={form.hobbies.includes(h)}
+                onPress={() => toggleHobby(h)}
+              />
+            ))}
+          </View>
+          {/* Custom hobby input */}
+          <View style={styles.customHobbyRow}>
+            <TextInput
+              value={hobbyInput}
+              onChangeText={setHobbyInput}
+              onSubmitEditing={addCustomHobby}
+              returnKeyType="done"
+              placeholder="Add custom interest…"
+              placeholderTextColor={colors.inkFaint}
+              style={styles.customInput}
+            />
+            <Pressable onPress={addCustomHobby} style={styles.addBtn}>
+              <AppText variant="bodyMedium" color={colors.white}>+</AppText>
+            </Pressable>
+          </View>
+          {/* Custom hobbies not in preset */}
+          {form.hobbies.filter((h) => !PRESET_HOBBIES.includes(h)).length > 0 ? (
+            <View style={[styles.chipWrap, { marginTop: spacing.sm }]}>
+              {form.hobbies
+                .filter((h) => !PRESET_HOBBIES.includes(h))
+                .map((h) => (
+                  <Chip key={h} label={`${h} ✕`} selected onPress={() => toggleHobby(h)} />
+                ))}
+            </View>
+          ) : null}
+
+          {/* Looking For */}
+          <AppText variant="label" color={colors.inkSoft} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
+            Looking for
+          </AppText>
+          <View style={styles.chipWrap}>
+            {RELATIONSHIP_OPTIONS.map((opt) => (
+              <Chip
+                key={opt}
+                label={opt}
+                selected={form.relationship_type === opt}
+                onPress={() => setForm((p) => ({ ...p, relationship_type: p.relationship_type === opt ? "" : opt }))}
+              />
+            ))}
+          </View>
+
+          <View style={{ height: spacing.xxl }} />
+          <Button
+            label="Save changes"
+            variant="primary"
+            onPress={handleSave}
+            loading={saving}
+            disabled={!hasChanges || saving}
+          />
+          <View style={{ height: spacing.xxl }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: colors.bg,
   },
-  container: {
-    flex: 1,
-    backgroundColor: "#FAFAFA",
+  scroll: {
+    paddingHorizontal: spacing.edge,
+    paddingBottom: spacing.xxxl,
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === "web" ? 24 : 60,
-    paddingBottom: 40,
+  errorBanner: {
+    backgroundColor: "#fff0f0",
+    borderRadius: radii.sm,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.danger,
   },
-  errorText: {
-    color: "#D32F2F",
-    fontSize: 14,
-    marginBottom: 16,
-    backgroundColor: "#FFEBEE",
-    padding: 12,
-    borderRadius: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  previewSubtitle: {
-    fontSize: 13,
-    color: "#9E9E9E",
-    marginTop: -8,
-    marginBottom: 14,
-  },
-  previewContainer: {
-    height: 480,
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 28,
-  },
-  fieldLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#616161",
-    marginBottom: 6,
-    marginTop: 16,
-  },
-  input: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: "#1A1A1A",
-  },
-  bioInput: {
-    minHeight: 100,
-    paddingTop: 14,
-  },
-  charCount: {
-    fontSize: 12,
-    color: "#9E9E9E",
-    textAlign: "right",
-    marginTop: 4,
-  },
-  pillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  pill: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: "#F5F5F5",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
-  pillSelected: {
-    backgroundColor: "#4291db",
-    borderColor: "#4291db",
-  },
-  pillText: {
-    fontSize: 14,
-    color: "#616161",
-    fontWeight: "500",
-  },
-  pillTextSelected: {
-    color: "#fff",
-  },
-  hobbyInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  addHobbyButton: {
-    padding: 4,
-  },
-  hobbyTags: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 10,
-  },
-  hobbyTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#E8F4FD",
-    paddingHorizontal: 12,
+  sectionLabel: { marginBottom: spacing.sm },
+  divider: { height: 1, backgroundColor: colors.rule, marginVertical: spacing.md },
+  bigInput: {
+    fontSize: 24,
+    color: colors.ink,
     paddingVertical: 6,
-    borderRadius: 16,
+    marginTop: 6,
   },
-  hobbyTagText: {
-    fontSize: 13,
-    color: "#4291db",
-    fontWeight: "500",
+  fieldInput: {
+    fontSize: 15,
+    color: colors.ink,
+    paddingVertical: 6,
+    fontFamily: typography.sans,
   },
-  saveButton: {
-    backgroundColor: "#4291db",
-    borderRadius: 14,
-    paddingVertical: 16,
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  customHobbyRow: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 32,
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
-  saveButtonDisabled: {
-    opacity: 0.5,
+  customInput: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: colors.rule,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.ink,
+    fontFamily: typography.sans,
   },
-  saveButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
+  addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

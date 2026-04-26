@@ -19,8 +19,8 @@ const TAB_CONFIG: TabConfig[] = [
   { name: "settings", href: "/(tabs)/settings", title: "Settings", icon: "settings-outline", iconFocused: "settings-sharp" },
 ];
 
-const ACTIVE_COLOR = "#E91E63";
-const INACTIVE_COLOR = "#9E9E9E";
+const ACTIVE_COLOR = "#4291db";
+const INACTIVE_COLOR = "#a09a92";
 
 function WebTabsLayout() {
   const pathname = usePathname();
@@ -100,13 +100,13 @@ const styles = StyleSheet.create({
   // Web layout
   webContainer: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#f7f5f0",
   },
   webTabBar: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E0E0E0",
+    backgroundColor: "#f7f5f0",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(26, 22, 18, 0.08)",
     paddingHorizontal: 8,
   },
   webTabItem: {
@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
   },
   // Mobile tab bar
   mobileTabBar: {
-    backgroundColor: "#fff",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E0E0E0",
+    backgroundColor: "#f7f5f0",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(26, 22, 18, 0.08)",
     paddingTop: 4,
   },
   mobileTabLabel: {

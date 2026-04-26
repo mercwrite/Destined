@@ -1,96 +1,89 @@
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, SafeAreaView, StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { AppText } from "@/components/Text";
+import { Button } from "@/components/Button";
+import { colors, spacing } from "@/theme";
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.brand}>
-        <Image
-          source={require("../../assets/images/icon.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Destined</Text>
-        <Text style={styles.tagline}>Find your perfect match</Text>
-      </View>
+    <View style={styles.root}>
+      <Image
+        source={{ uri: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=1200&q=80" }}
+        style={styles.hero}
+        resizeMode="cover"
+      />
+      <LinearGradient
+        colors={["rgba(0,0,0,0)", colors.bg]}
+        locations={[0.3, 1]}
+        style={styles.heroFade}
+      />
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => router.push("/(auth)/sign-up")}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.primaryButtonText}>Create Account</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.topBar}>
+          <AppText variant="label" color={colors.white} style={{ opacity: 0.9 }}>
+            Destined.
+          </AppText>
+        </View>
 
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => router.push("/(auth)/sign-in")}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.secondaryButtonText}>Sign In</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.bottom}>
+          <AppText variant="label" color={colors.accent} style={{ marginBottom: spacing.md }}>
+            — Where to next?
+          </AppText>
+
+          <AppText variant="display" color={colors.ink}>
+            {"Date by\n"}
+            <AppText variant="displayItalic" color={colors.accent}>
+              destination.
+            </AppText>
+          </AppText>
+
+          <AppText
+            variant="body"
+            color={colors.inkSoft}
+            style={{ marginTop: spacing.lg, marginBottom: spacing.xxl, maxWidth: 300 }}
+          >
+            Meet someone who wants to go where you want to go. Plan the trip together.
+          </AppText>
+
+          <Button
+            label="Create account"
+            variant="dark"
+            onPress={() => router.push("/(auth)/sign-up")}
+          />
+          <View style={{ height: spacing.md }} />
+          <View style={styles.signInRow}>
+            <AppText variant="body" color={colors.inkSoft}>
+              Already a member?{" "}
+            </AppText>
+            <AppText
+              variant="bodyMedium"
+              color={colors.ink}
+              style={{ textDecorationLine: "underline" }}
+              onPress={() => router.push("/(auth)/sign-in")}
+            >
+              Sign in
+            </AppText>
+          </View>
+        </View>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    justifyContent: "space-between",
-    paddingVertical: 80,
-    paddingHorizontal: 32,
+  root: { flex: 1, backgroundColor: colors.bg },
+  hero: { position: "absolute", top: 0, left: 0, right: 0, height: "62%" },
+  heroFade: { position: "absolute", left: 0, right: 0, top: 0, height: "62%" },
+  safe: { flex: 1, justifyContent: "space-between" },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: spacing.edge,
+    paddingTop: spacing.md,
   },
-  brand: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-  },
-  logo: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 42,
-    fontWeight: "800",
-    color: "#E91E63",
-    letterSpacing: 0.5,
-  },
-  tagline: {
-    fontSize: 16,
-    color: "#9E9E9E",
-    fontWeight: "400",
-  },
-  actions: {
-    gap: 12,
-  },
-  primaryButton: {
-    backgroundColor: "#E91E63",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: "#1A1A1A",
-    fontSize: 17,
-    fontWeight: "600",
-  },
+  bottom: { padding: spacing.edge, paddingBottom: spacing.xxl },
+  signInRow: { flexDirection: "row", justifyContent: "center" },
 });

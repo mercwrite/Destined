@@ -3,6 +3,9 @@ import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/utils/supabase";
+import { useFonts, Fraunces_500Medium, Fraunces_500Medium_Italic } from "@expo-google-fonts/fraunces";
+import { DMSans_400Regular, DMSans_500Medium, DMSans_700Bold } from "@expo-google-fonts/dm-sans";
+import { JetBrainsMono_500Medium } from "@expo-google-fonts/jetbrains-mono";
 
 // ── Auth Context ──────────────────────────────────────────────────────────────
 
@@ -43,6 +46,15 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const [fontsLoaded] = useFonts({
+    Fraunces_500Medium,
+    Fraunces_500Medium_Italic,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_700Bold,
+    JetBrainsMono_500Medium,
+  });
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -56,10 +68,10 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) {
+  if (loading || !fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" }}>
-        <ActivityIndicator size="large" color="#E91E63" />
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f7f5f0" }}>
+        <ActivityIndicator size="large" color="#4291db" />
       </View>
     );
   }
