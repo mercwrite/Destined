@@ -3,7 +3,14 @@
     "allow": [
       "Bash(cd:*)",
       "Bash(npx expo install react-native-url-polyfill)",
-      "Bash(npx expo export --platform web)"
+      "Bash(npx expo export --platform web)",
+      "Bash(bash *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "mcp__plugin_supabase_supabase__list_tables",
+      "Bash(git commit *)"
     ]
   }
 }
