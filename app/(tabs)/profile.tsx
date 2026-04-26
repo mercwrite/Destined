@@ -16,6 +16,7 @@ import { useAuth } from "@/app/_layout";
 import { supabase } from "@/utils/supabase";
 import ProfileAvatar from "@/components/ProfileAvatar";
 import PhotoGrid from "@/components/PhotoGrid";
+import ProfileCard from "@/components/ProfileCard";
 import type { ProfilePhoto } from "@/components/PhotoGridItem";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -131,6 +132,21 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // ── Preview Data ─────────────────────────────────────────────────────────
+
+  const previewData = useMemo(() => ({
+    id: profile?.id ?? "",
+    name: form.name || null,
+    date_of_birth: profile?.date_of_birth ?? null,
+    bio: form.bio || null,
+    location_city: form.location_city || null,
+    gender: form.gender || null,
+    destination: form.destination || null,
+    hobbies: form.hobbies.length > 0 ? form.hobbies : null,
+    relationship_type: form.relationship_type || null,
+    photos,
+  }), [form, photos, profile?.id, profile?.date_of_birth]);
 
   // ── Change Detection ─────────────────────────────────────────────────────
 
@@ -351,6 +367,13 @@ export default function ProfileScreen() {
     >
       {error && <Text style={styles.errorText}>{error}</Text>}
 
+      {/* Profile Preview */}
+      <Text style={styles.sectionTitle}>Preview</Text>
+      <Text style={styles.previewSubtitle}>How others see your card</Text>
+      <View style={styles.previewContainer}>
+        <ProfileCard profile={previewData} />
+      </View>
+
       {/* Avatar */}
       <ProfileAvatar
         photoUrl={firstPhotoUrl}
@@ -555,6 +578,18 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     marginBottom: 12,
     marginTop: 8,
+  },
+  previewSubtitle: {
+    fontSize: 13,
+    color: "#9E9E9E",
+    marginTop: -8,
+    marginBottom: 14,
+  },
+  previewContainer: {
+    height: 480,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 28,
   },
   fieldLabel: {
     fontSize: 14,
