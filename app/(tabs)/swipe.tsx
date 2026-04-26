@@ -76,74 +76,66 @@ export default function SwipeScreen() {
 
   const allProfiles = currentProfile ? [currentProfile, ...nextProfiles] : [];
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4291db" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons name="cloud-offline-outline" size={52} color="#9E9E9E" />
-        <Text style={styles.emptyTitle}>Something went wrong</Text>
-        <Text style={styles.emptySubtitle}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={retry}>
-          <Text style={styles.retryText}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (isEmpty) {
-    return (
-      <View style={styles.centered}>
-        <Ionicons name="people-outline" size={52} color="#9E9E9E" />
-        <Text style={styles.emptyTitle}>You've seen everyone nearby</Text>
-        <Text style={styles.emptySubtitle}>Check back later for new profiles</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={retry}>
-          <Text style={styles.retryText}>Refresh</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   return (
     <GestureHandlerRootView style={styles.root}>
-      <View style={styles.stackArea}>
-        <SwipeStack
-          profiles={allProfiles}
-          onSwipe={handleSwipe}
-          cardRef={topCardRef}
-        />
-      </View>
+      {isLoading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#4291db" />
+        </View>
+      ) : error ? (
+        <View style={styles.centered}>
+          <Ionicons name="cloud-offline-outline" size={52} color="#9E9E9E" />
+          <Text style={styles.emptyTitle}>Something went wrong</Text>
+          <Text style={styles.emptySubtitle}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={retry}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : isEmpty ? (
+        <View style={styles.centered}>
+          <Ionicons name="people-outline" size={52} color="#9E9E9E" />
+          <Text style={styles.emptyTitle}>You've seen everyone nearby</Text>
+          <Text style={styles.emptySubtitle}>Check back later for new profiles</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={retry}>
+            <Text style={styles.retryText}>Refresh</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <View style={styles.stackArea}>
+            <SwipeStack
+              profiles={allProfiles}
+              onSwipe={handleSwipe}
+              cardRef={topCardRef}
+            />
+          </View>
 
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.rejectButton]}
-          onPress={() => handleButtonSwipe('left')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="close" size={32} color="#FF4458" />
-        </TouchableOpacity>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.rejectButton]}
+              onPress={() => handleButtonSwipe('left')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="close" size={32} color="#FF4458" />
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => handleButtonSwipe('right')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="heart" size={28} color="#4291db" />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.likeButton]}
+              onPress={() => handleButtonSwipe('right')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="heart" size={28} color="#4291db" />
+            </TouchableOpacity>
+          </View>
 
-      {matchedProfile && (
-        <MatchModal
-          matchedProfile={matchedProfile}
-          currentUserProfile={currentUserProfile}
-          onKeepSwiping={clearMatch}
-        />
+          {matchedProfile && (
+            <MatchModal
+              matchedProfile={matchedProfile}
+              currentUserProfile={currentUserProfile}
+              onKeepSwiping={clearMatch}
+            />
+          )}
+        </>
       )}
     </GestureHandlerRootView>
   );
