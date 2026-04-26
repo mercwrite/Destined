@@ -99,7 +99,9 @@ describe('useSwipeQueue', () => {
 
   it('recordSwipe left advances the queue and inserts a left swipe', async () => {
     const insertMock = jest.fn().mockResolvedValue({ error: null });
-    const updateMock = jest.fn().mockResolvedValue({ error: null });
+    const updateMock = jest.fn().mockReturnValue({
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    });
 
     mockFrom.mockImplementation((table) => {
       const base = {
@@ -153,6 +155,7 @@ describe('useSwipeQueue', () => {
     expect(insertMock).toHaveBeenCalledWith(
       expect.objectContaining({ swiper_id: 'user-abc', swiped_id: 'p-1', direction: 'left' })
     );
+    expect(updateMock).toHaveBeenCalled();
   });
 
   it('recordSwipe right sets matchedProfile when rpc returns a match id', async () => {
@@ -191,7 +194,7 @@ describe('useSwipeQueue', () => {
         return { ...base, insert: insertSwipeMock, limit: jest.fn().mockResolvedValue({ data: [], error: null }) };
       }
       if (table === 'profile_photos') {
-        return { ...base, update: jest.fn().mockResolvedValue({ error: null }) };
+        return { ...base, update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }) };
       }
       return { ...base, limit: jest.fn().mockResolvedValue({ data: [], error: null }) };
     });

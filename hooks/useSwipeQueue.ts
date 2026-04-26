@@ -79,9 +79,10 @@ function ageBounds(minAge: number, maxAge: number): { minDob: string; maxDob: st
   const maxDob = new Date(now.getFullYear() - minAge, now.getMonth(), now.getDate())
     .toISOString()
     .split('T')[0];
-  const minDob = new Date(now.getFullYear() - maxAge - 1, now.getMonth(), now.getDate() + 1)
-    .toISOString()
-    .split('T')[0];
+  const minDobDate = new Date(now);
+  minDobDate.setFullYear(now.getFullYear() - maxAge - 1);
+  minDobDate.setDate(minDobDate.getDate() + 1);
+  const minDob = minDobDate.toISOString().split('T')[0];
   return { minDob, maxDob };
 }
 
@@ -109,7 +110,7 @@ export function useSwipeQueue(): SwipeQueueResult {
     const { data, error: err } = await supabase
       .from('user_settings')
       .select('preferred_genders, preferred_age_min, preferred_age_max')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (err || !data) {
@@ -265,11 +266,11 @@ export function useSwipeQueue(): SwipeQueueResult {
         } else {
           analyticsUpdate.swipe_left = topPhoto.swipe_left + 1;
         }
-        // Filter before update so the chain is: .eq().update() — compatible with test mocks
         supabase
           .from('profile_photos')
+          .update(analyticsUpdate)
           .eq('id', topPhoto.id)
-          .update(analyticsUpdate);
+          .then(({ error }: any) => { if (error) console.warn('Analytics update failed:', error.message); });
       }
 
       // 5. Check for match on right swipe
@@ -300,7 +301,7 @@ export function useSwipeQueue(): SwipeQueueResult {
   // ── Derived state ───────────────────────────────────────────────────────────
 
   const currentProfile = queue[0] ?? null;
-  const nextProfiles = queue.slice(1);
+  const nextProfiles = queue.slice(1, 3);
   const isEmpty = !isLoading && queue.length === 0;
 
   return {
