@@ -5,7 +5,7 @@ import type { ProfileCardData } from '@/components/ProfileCard';
 type Props = {
   profiles: ProfileCardData[];
   onSwipe: (direction: 'left' | 'right') => void;
-  cardRef: React.RefObject<SwipeCardRef>;
+  cardRef: React.RefObject<SwipeCardRef | null>;
 };
 
 export default function SwipeStack({ profiles, onSwipe, cardRef }: Props) {

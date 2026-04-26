@@ -1,8 +1,9 @@
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
+  runOnUI,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -33,18 +34,20 @@ const SwipeCard = forwardRef<SwipeCardRef, Props>(
     const { width: screenWidth } = useWindowDimensions();
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
+    const onSwipeRef = useRef(onSwipe);
+    useEffect(() => { onSwipeRef.current = onSwipe; }, [onSwipe]);
 
     function flyOff(direction: 'left' | 'right') {
       'worklet';
       const target = direction === 'right' ? screenWidth * 1.5 : -screenWidth * 1.5;
       translateX.value = withTiming(target, { duration: FLY_DURATION }, () => {
-        runOnJS(onSwipe)(direction);
+        runOnJS(onSwipeRef.current)(direction);
       });
     }
 
     useImperativeHandle(ref, () => ({
-      swipeLeft: () => flyOff('left'),
-      swipeRight: () => flyOff('right'),
+      swipeLeft: () => runOnUI(flyOff)('left'),
+      swipeRight: () => runOnUI(flyOff)('right'),
     }));
 
     const panGesture = Gesture.Pan()
@@ -63,7 +66,7 @@ const SwipeCard = forwardRef<SwipeCardRef, Props>(
       });
 
     const stackScale = 1 - stackIndex * 0.04;
-    const stackOffsetY = stackIndex * 10;
+    const stackOffsetY = stackIndex * 8;
 
     const cardStyle = useAnimatedStyle(() => {
       const rotate = interpolate(
