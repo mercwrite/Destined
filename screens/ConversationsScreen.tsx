@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View, ScrollView, Image, Pressable, StyleSheet, SafeAreaView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { AppText } from '../components/Text';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { TabBar, TabId } from '../components/TabBar';
@@ -25,10 +26,10 @@ export interface Conversation {
 interface Props {
   activeTab: TabId;
   onChangeTab: (id: TabId) => void;
-  onOpenChat: (c: Conversation) => void;
 }
 
-export function ConversationsScreen({ activeTab, onChangeTab, onOpenChat }: Props) {
+export function ConversationsScreen({ activeTab, onChangeTab }: Props) {
+  const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
@@ -162,7 +163,7 @@ export function ConversationsScreen({ activeTab, onChangeTab, onOpenChat }: Prop
                 </AppText>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: spacing.edge, gap: spacing.md }}>
                   {newMatches.map((m) => (
-                    <Pressable key={m.id} onPress={() => onOpenChat(m)} style={styles.newMatch}>
+                    <Pressable key={m.id} onPress={() => router.push({ pathname: '/chat', params: { matchId: m.id, partnerName: m.name, partnerPhoto: m.photo, destination: m.destination, online: m.online ? 'true' : 'false' } })} style={styles.newMatch}>
                       <Image source={{ uri: m.photo }} style={styles.newMatchPhoto} />
                       <View style={styles.newMatchBadge}>
                         <AppText variant="caption" color={colors.white} style={{ fontSize: 10 }}>✦</AppText>
@@ -183,7 +184,7 @@ export function ConversationsScreen({ activeTab, onChangeTab, onOpenChat }: Prop
               Messages
             </AppText>
             {conversations.map((c) => (
-              <Pressable key={c.id} onPress={() => onOpenChat(c)} style={styles.thread}>
+              <Pressable key={c.id} onPress={() => router.push({ pathname: '/chat', params: { matchId: c.id, partnerName: c.name, partnerPhoto: c.photo, destination: c.destination, online: c.online ? 'true' : 'false' } })} style={styles.thread}>
                 <View style={styles.avatarWrap}>
                   <Image source={{ uri: c.photo }} style={styles.avatar} />
                   {c.online ? <View style={styles.onlineDot} /> : null}
