@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -19,6 +20,8 @@ import ProfileCard, { type ProfileCardData } from '@/components/ProfileCard';
 import { colors, radii, shadows, spacing } from '@/theme';
 
 const { height: SCREEN_H } = Dimensions.get('window');
+const NUM_COLS = Platform.OS === 'web' ? 5 : 2;
+const COL_GAP = Platform.OS === 'web' ? spacing.sm : spacing.sm;
 
 function computeAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -165,10 +168,12 @@ export default function LikesScreen() {
           <FlatList
             data={likers}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={NUM_COLS}
+            key={NUM_COLS}
             contentContainerStyle={styles.grid}
-            columnWrapperStyle={{ gap: spacing.sm }}
-            ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+            style={styles.gridList}
+            columnWrapperStyle={{ gap: COL_GAP }}
+            ItemSeparatorComponent={() => <View style={{ height: COL_GAP }} />}
             renderItem={({ item }) => {
               const age = computeAge(item.date_of_birth);
               const photoUrl = item.photos[0]?.url ?? null;
@@ -260,6 +265,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.xxxl,
+  },
+  gridList: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 1100 : undefined,
   },
   grid: {
     paddingHorizontal: spacing.edge,
