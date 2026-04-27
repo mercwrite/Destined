@@ -1,7 +1,6 @@
 import { Tabs, Slot, usePathname, useRouter } from "expo-router";
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import WebHeader from "@/components/WebHeader";
 
 type TabConfig = {
   name: string;
@@ -30,29 +29,39 @@ function WebTabsLayout() {
 
   return (
     <View style={styles.webContainer}>
-      <WebHeader />
-      <View style={styles.webTabBar}>
-        {TAB_CONFIG.map((tab) => {
-          const isActive = activeSegment === tab.name;
-          return (
-            <TouchableOpacity
-              key={tab.name}
-              style={[styles.webTabItem, isActive && styles.webTabItemActive]}
-              onPress={() => router.navigate(tab.href as never)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-            >
-              <Ionicons
-                name={isActive ? tab.iconFocused : tab.icon}
-                size={18}
-                color={isActive ? ACTIVE_COLOR : INACTIVE_COLOR}
-              />
-              <Text style={[styles.webTabLabel, isActive && styles.webTabLabelActive]}>
-                {tab.title}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      {/* Combined brand + nav bar */}
+      <View style={styles.webNavBar}>
+        <View style={styles.webNavBrand}>
+          <Image
+            source={require("../../assets/images/icon.png")}
+            style={styles.webNavLogo}
+            resizeMode="contain"
+          />
+          <Text style={styles.webNavTitle}>Destined</Text>
+        </View>
+        <View style={styles.webNavTabs}>
+          {TAB_CONFIG.map((tab) => {
+            const isActive = activeSegment === tab.name;
+            return (
+              <TouchableOpacity
+                key={tab.name}
+                style={[styles.webTabItem, isActive && styles.webTabItemActive]}
+                onPress={() => router.navigate(tab.href as never)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+              >
+                <Ionicons
+                  name={isActive ? tab.iconFocused : tab.icon}
+                  size={18}
+                  color={isActive ? ACTIVE_COLOR : INACTIVE_COLOR}
+                />
+                <Text style={[styles.webTabLabel, isActive && styles.webTabLabelActive]}>
+                  {tab.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
       <View style={styles.webContent}>
         <Slot />
@@ -102,12 +111,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f7f5f0",
   },
-  webTabBar: {
+  webNavBar: {
     flexDirection: "row",
-    backgroundColor: "#f7f5f0",
+    alignItems: "stretch",
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "rgba(26, 22, 18, 0.08)",
-    paddingHorizontal: 8,
+    paddingLeft: 24,
+  },
+  webNavBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingRight: 16,
+  },
+  webNavLogo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+  },
+  webNavTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#E91E63",
+    letterSpacing: 0.5,
+  },
+  webNavTabs: {
+    flexDirection: "row",
+    alignItems: "stretch",
   },
   webTabItem: {
     flexDirection: "row",
@@ -117,7 +148,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
-    marginBottom: -StyleSheet.hairlineWidth,
+    marginBottom: -1,
   },
   webTabItemActive: {
     borderBottomColor: ACTIVE_COLOR,
