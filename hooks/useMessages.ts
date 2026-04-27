@@ -83,15 +83,25 @@ export function useMessages(): UseMessagesResult {
         return;
       }
 
-      const { error: err } = await supabase.from('messages').insert({
-        match_id: matchId,
-        sender_id: userId,
-        content: trimmed,
-      });
+      const { data: inserted, error: err } = await supabase
+        .from('messages')
+        .insert({ match_id: matchId, sender_id: userId, content: trimmed })
+        .select('id, match_id, sender_id, content, created_at, read_at')
+        .single();
 
       if (err) {
         setError(err.message);
         throw err;
+      }
+
+      if (inserted) {
+        setMessages((prev) => {
+          const alreadyPresent = prev.some((m) => m.id === inserted.id);
+          if (alreadyPresent) return prev;
+          return [...prev, inserted as Message].sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
       }
     },
     [userId]

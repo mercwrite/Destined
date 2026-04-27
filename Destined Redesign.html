@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Destined — Redesign Exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Archivo+Black&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+  img { display: block; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="browser-window.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="screens/data.jsx"></script>
+<script type="text/babel" src="screens/atlas.jsx"></script>
+<script type="text/babel" src="screens/aurora.jsx"></script>
+<script type="text/babel" src="screens/pulse.jsx"></script>
+
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "colorMode": "blue"
+}/*EDITMODE-END*/;
+
+const DIRECTION_ORDER = ['atlas', 'aurora', 'pulse'];
+
+const SCREEN_SPECS = [
+  { id: 'welcome', label: 'Welcome' },
+  { id: 'swipe', label: 'Swipe' },
+  { id: 'profile', label: 'Profile' },
+  { id: 'match', label: 'Match' },
+  { id: 'matches', label: 'Conversations' },
+  { id: 'chat', label: 'Chat' },
+];
+
+const COMPONENTS = {
+  atlas: { welcome: AtlasWelcome, swipe: AtlasSwipe, profile: AtlasProfile, match: AtlasMatch, matches: AtlasMatches, chat: AtlasChat },
+  aurora: { welcome: AuroraWelcome, swipe: AuroraSwipe, profile: AuroraProfile, match: AuroraMatch, matches: AuroraMatches, chat: AuroraChat },
+  pulse: { welcome: PulseWelcome, swipe: PulseSwipe, profile: PulseProfile, match: PulseMatch, matches: PulseMatches, chat: PulseChat },
+};
+
+const DIRECTION_META = {
+  atlas: {
+    title: 'Atlas',
+    tagline: 'Editorial · Travel-magazine — serif headlines, terracotta + bone',
+    accent: '#c8553d',
+  },
+  aurora: {
+    title: 'Aurora',
+    tagline: 'Dreamy · Sunset gradient + glassmorphism — soft pinks → violets',
+    accent: '#ff6b8a',
+  },
+  pulse: {
+    title: 'Pulse',
+    tagline: 'Bold · Color-blocked playful — heavy black borders, sticker energy',
+    accent: '#ff3366',
+  },
+};
+
+// iOS frame wrapper
+function PhoneFrame({ children, dark, w = 390, h = 844 }) {
+  return (
+    <div style={{
+      width: w + 16, height: h + 16, padding: 8,
+      background: '#1a1612', borderRadius: 56,
+      boxShadow: '0 30px 60px -20px rgba(0,0,0,0.4), 0 0 0 2px rgba(0,0,0,0.6)',
+    }}>
+      <div style={{ width: w, height: h, borderRadius: 48, overflow: 'hidden', position: 'relative', background: '#000' }}>
+        {/* Status bar overlay */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 50,
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '20px 28px 0', zIndex: 100, pointerEvents: 'none',
+          color: dark ? '#fff' : '#000', fontSize: 14, fontWeight: 600,
+          fontFamily: '-apple-system, system-ui',
+        }}>
+          <span>9:41</span>
+          <div style={{
+            position: 'absolute', top: 14, left: '50%', transform: 'translateX(-50%)',
+            width: 110, height: 30, borderRadius: 15, background: '#000',
+          }} />
+          <span style={{ fontSize: 13 }}>●●●●</span>
+        </div>
+        {/* Home indicator */}
+        <div style={{
+          position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+          width: 130, height: 4, borderRadius: 2,
+          background: dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)', zIndex: 100,
+        }} />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Web frame — Chrome-style
+function WebFrame({ children, w = 1100, h = 720 }) {
+  return (
+    <div style={{
+      width: w, height: h, borderRadius: 12, overflow: 'hidden',
+      boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
+      background: '#202124', display: 'flex', flexDirection: 'column',
+    }}>
+      {/* Chrome bar */}
+      <div style={{ height: 36, background: '#202124', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8, flexShrink: 0 }}>
+        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#ff5f57' }} />
+        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#febc2e' }} />
+        <div style={{ width: 12, height: 12, borderRadius: 6, background: '#28c840' }} />
+        <div style={{ marginLeft: 16, padding: '4px 14px', background: '#35363a', borderRadius: 6, color: '#9aa0a6', fontSize: 11, fontFamily: 'system-ui' }}>destined.app</div>
+      </div>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Web layout — wraps a screen with web header + tab bar
+function WebLayout({ direction, screenId, t }) {
+  const Component = COMPONENTS[direction][screenId];
+  const tabs = ['Discover', 'Likes', 'Trips', 'Me', 'Settings'];
+  const activeTab = screenId === 'swipe' ? 0 : screenId === 'matches' || screenId === 'chat' ? 2 : screenId === 'profile' ? 3 : 0;
+
+  // Web layout: header + tabs + content panel containing the screen
+  return (
+    <div style={{
+      width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
+      background: t.bg, fontFamily: t.sans,
+    }}>
+      {/* Header */}
+      <div style={{
+        height: 64, background: t.surface, borderBottom: `1px solid ${t.rule}`,
+        display: 'flex', alignItems: 'center', padding: '0 32px', gap: 32, flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }}>D</div>
+          <div style={{ fontFamily: t.serif, fontSize: 22, color: t.ink, letterSpacing: -0.5, fontWeight: 700 }}>destined</div>
+        </div>
+        <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+          {tabs.map((tab, i) => (
+            <div key={tab} style={{
+              padding: '8px 14px', borderRadius: 8, fontSize: 14, fontWeight: 600,
+              color: i === activeTab ? t.accent : t.inkSoft,
+              background: i === activeTab ? `${t.accent}12` : 'transparent',
+            }}>{tab}</div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 18, background: t.rule, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.inkSoft }}>♥</div>
+          <div style={{ width: 36, height: 36, borderRadius: 18, overflow: 'hidden' }}>
+            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Content panel — web shows the mobile screen as a centered narrow column for content-heavy screens, or a 2-column layout for swipe */}
+      <div style={{ flex: 1, overflow: 'hidden', display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+        {screenId === 'swipe' && <WebSwipe t={t} direction={direction} />}
+        {screenId === 'matches' && <WebMatches t={t} direction={direction} />}
+        {screenId === 'chat' && <WebChat t={t} direction={direction} />}
+        {screenId === 'profile' && <WebProfile t={t} direction={direction} />}
+        {screenId === 'welcome' && <WebWelcome t={t} direction={direction} />}
+        {screenId === 'match' && <WebMatchModal t={t} direction={direction} />}
+      </div>
+    </div>
+  );
+}
+
+// Web-specific layouts that wrap the mobile components
+function WebSwipe({ t, direction }) {
+  const Component = COMPONENTS[direction].swipe;
+  return (
+    <div style={{ width: '100%', maxWidth: 1100, padding: '0 40px', display: 'grid', gridTemplateColumns: '280px 1fr 280px', gap: 32, height: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ background: t.surface, border: `1px solid ${t.rule}`, borderRadius: 16, padding: 18 }}>
+          <div style={{ fontSize: 11, color: t.inkSoft, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, marginBottom: 8 }}>Filters</div>
+          <div style={{ fontSize: 13, color: t.ink, marginBottom: 4 }}>Distance: 25 mi</div>
+          <div style={{ fontSize: 13, color: t.ink, marginBottom: 4 }}>Age: 22–32</div>
+          <div style={{ fontSize: 13, color: t.ink }}>Looking for: Long-term, Short-term</div>
+        </div>
+        <div style={{ background: t.surface, border: `1px solid ${t.rule}`, borderRadius: 16, padding: 18 }}>
+          <div style={{ fontSize: 11, color: t.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, marginBottom: 8 }}>✦ Today's hot destinations</div>
+          {['Lisbon', 'Tokyo', 'Mexico City', 'Joshua Tree'].map(d => (
+            <div key={d} style={{ fontSize: 14, color: t.ink, padding: '8px 0', borderBottom: `1px solid ${t.rule}` }}>{d}</div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 380, height: 620, position: 'relative' }}>
+          <Component t={t} w={380} h={620} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ background: t.surface, border: `1px solid ${t.rule}`, borderRadius: 16, padding: 18 }}>
+          <div style={{ fontSize: 11, color: t.inkSoft, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, marginBottom: 10 }}>Recent matches</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {LIKES.slice(0,3).map(l => (
+              <div key={l.name} style={{ aspectRatio: '1', borderRadius: 12, overflow: 'hidden' }}>
+                <img src={l.photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ background: t.surface, border: `1px solid ${t.rule}`, borderRadius: 16, padding: 18 }}>
+          <div style={{ fontSize: 11, color: t.inkSoft, textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, marginBottom: 8 }}>Tip</div>
+          <div style={{ fontSize: 13, color: t.ink, lineHeight: 1.5 }}>Profiles with a destination get <span style={{ color: t.accent, fontWeight: 700 }}>2.4× more right swipes</span>.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WebMatches({ t, direction }) {
+  const Chat = COMPONENTS[direction].chat;
+  return (
+    <div style={{ width: '100%', maxWidth: 1100, padding: '0 40px', display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24, height: '100%' }}>
+      <div style={{ background: t.surface, border: `1px solid ${t.rule}`, borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '18px 20px', borderBottom: `1px solid ${t.rule}` }}>
+          <div style={{ fontFamily: t.serif, fontSize: 22, color: t.ink, letterSpacing: -0.4, fontWeight: 700 }}>Trips</div>
+          <div style={{ fontSize: 12, color: t.inkSoft, marginTop: 2 }}>5 conversations</div>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {CONVERSATIONS.map((c, i) => (
+            <div key={c.id} style={{ display: 'flex', gap: 12, padding: '14px 20px', alignItems: 'center', background: i === 0 ? `${t.accent}10` : 'transparent', borderLeft: i === 0 ? `3px solid ${t.accent}` : '3px solid transparent' }}>
+              <div style={{ position: 'relative', width: 48, height: 48, borderRadius: 24, overflow: 'hidden', flexShrink: 0 }}>
+                <img src={c.photo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {c.online && <div style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, borderRadius: 6, background: '#4ade80', border: `2px solid ${t.surface}` }} />}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div style={{ fontSize: 15, color: t.ink, fontWeight: 600 }}>{c.name}</div>
+                  <div style={{ fontSize: 11, color: t.inkSoft }}>{c.time}</div>
+                </div>
+                <div style={{ fontSize: 11, color: t.accent, fontWeight: 600, marginTop: 1 }}>✈ {c.dest}</div>
+                <div style={{ fontSize: 13, color: t.inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2, fontWeight: c.unread ? 600 : 400 }}>{c.last}</div>
+              </div>
+              {c.unread > 0 && <div style={{ background: t.accent, color: '#fff', minWidth: 18, height: 18, borderRadius: 9, fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 5px' }}>{c.unread}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ background: t.surface, border: `1px solid ${t.rule}`, borderRadius: 16, overflow: 'hidden', position: 'relative' }}>
+        <Chat t={t} w="100%" h={620} />
+      </div>
+    </div>
+  );
+}
+
+function WebChat({ t, direction }) { return <WebMatches t={t} direction={direction} />; }
+
+function WebProfile({ t, direction }) {
+  const Component = COMPONENTS[direction].profile;
+  return (
+    <div style={{ width: '100%', maxWidth: 900, padding: '0 40px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: 420, position: 'relative' }}>
+        <Component t={t} w={420} h={680} />
+      </div>
+    </div>
+  );
+}
+
+function WebWelcome({ t, direction }) {
+  const Component = COMPONENTS[direction].welcome;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <Component t={t} w={460} h={680} />
+    </div>
+  );
+}
+
+function WebMatchModal({ t, direction }) {
+  const Component = COMPONENTS[direction].match;
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.4)' }}>
+      <div style={{ borderRadius: 24, overflow: 'hidden' }}>
+        <Component t={t} w={420} h={680} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main app ───
+function App() {
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const colorMode = tweaks.colorMode || 'native';
+
+  return (
+    <>
+      <DesignCanvas>
+        {/* Intro section */}
+        <DCSection id="intro" title="Destined — UI redesign" subtitle="Three aesthetic directions × six screens × iOS + Web. Use Tweaks to swap color theme.">
+          <DCArtboard id="intro-card" label="Brief" width={520} height={460}>
+            <div style={{ width: '100%', height: '100%', background: '#1a1612', color: '#f4efe6', padding: 32, fontFamily: '"Fraunces", Georgia, serif', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxSizing: 'border-box' }}>
+              <div>
+                <div style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: 11, letterSpacing: 2, color: '#c8553d', textTransform: 'uppercase', marginBottom: 14 }}>— Brief</div>
+                <div style={{ fontSize: 38, lineHeight: 1, letterSpacing: -1, marginBottom: 14 }}>
+                  Date by<br/><i style={{ color: '#c8553d' }}>destination.</i>
+                </div>
+                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.55, color: 'rgba(244,239,230,0.75)', maxWidth: 380 }}>
+                  Destined is a dating app for younger users where every match starts with a shared trip idea. The "where do you want to go?" field is the hook on every card — not a buried profile detail.
+                </div>
+              </div>
+              <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: 'rgba(244,239,230,0.55)', lineHeight: 1.6 }}>
+                <div>Below: 3 directions × 6 screens × iOS + Web.</div>
+                <div>Toggle Tweaks (top toolbar) to recolor every direction.</div>
+                <div style={{ marginTop: 8, color: '#c8553d' }}>★ Pick one — I'll write the .tsx files.</div>
+              </div>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        {DIRECTION_ORDER.map((direction) => {
+          const meta = DIRECTION_META[direction];
+          const t = applyTheme(direction, colorMode);
+          return (
+            <React.Fragment key={direction}>
+              {/* iOS row */}
+              <DCSection
+                id={`${direction}-ios`}
+                title={`${meta.title} — iOS`}
+                subtitle={meta.tagline}
+              >
+                {SCREEN_SPECS.map(spec => {
+                  const Component = COMPONENTS[direction][spec.id];
+                  return (
+                    <DCArtboard key={spec.id} id={`${direction}-ios-${spec.id}`} label={spec.label} width={406} height={860}>
+                      <PhoneFrame dark={spec.id === 'match' && direction === 'atlas'}>
+                        <Component t={t} w={390} h={844} />
+                      </PhoneFrame>
+                    </DCArtboard>
+                  );
+                })}
+              </DCSection>
+
+              {/* Web row */}
+              <DCSection
+                id={`${direction}-web`}
+                title={`${meta.title} — Web`}
+                subtitle="Same components, desktop layout: header + horizontal tabs + 3-column content"
+              >
+                {SCREEN_SPECS.filter(s => ['welcome', 'swipe', 'matches', 'profile'].includes(s.id)).map(spec => (
+                  <DCArtboard key={spec.id} id={`${direction}-web-${spec.id}`} label={spec.label} width={1100} height={720}>
+                    <WebFrame>
+                      <WebLayout direction={direction} screenId={spec.id} t={t} />
+                    </WebFrame>
+                  </DCArtboard>
+                ))}
+              </DCSection>
+            </React.Fragment>
+          );
+        })}
+      </DesignCanvas>
+
+      {/* Tweaks panel */}
+      <TweaksPanel title="Tweaks">
+        <TweakSection title="Color theme">
+          <div style={{ fontSize: 12, color: '#666', lineHeight: 1.4, marginBottom: 8 }}>
+            Overlays a brand color across all three directions. "Native" = each direction's own palette.
+          </div>
+          <TweakRadio
+            value={tweaks.colorMode || 'native'}
+            onChange={v => setTweak('colorMode', v)}
+            options={[
+              { value: 'native', label: 'Native' },
+              { value: 'blue', label: 'Baby blue' },
+              { value: 'pink', label: 'Pink' },
+              { value: 'sunset', label: 'Sunset' },
+              { value: 'dark', label: 'Dark' },
+            ]}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
