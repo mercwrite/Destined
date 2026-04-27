@@ -250,38 +250,19 @@ export function useSwipeQueue(): SwipeQueueResult {
       // 2. Advance queue
       setQueue((prev) => prev.slice(1));
 
-      // 3. Insert swipe record (fire and forget — don't block UX)
-      supabase
-        .from('swipes')
-        .insert({ swiper_id: userId, swiped_id: profile.id, direction });
-
-      // 4. Update top photo analytics
+      // 3. Atomically record swipe, update photo stats, and check for a match.
+      //    Uses a SECURITY DEFINER RPC to bypass RLS on profile_photos (we can't
+      //    UPDATE another user's photo rows directly) and to avoid the race
+      //    condition of reading stale counts on the client.
       const topPhoto = profile.photos[0];
-      if (topPhoto) {
-        const analyticsUpdate: Record<string, number> = {
-          impressions: topPhoto.impressions + 1,
-        };
-        if (direction === 'right') {
-          analyticsUpdate.swipe_right = topPhoto.swipe_right + 1;
-        } else {
-          analyticsUpdate.swipe_left = topPhoto.swipe_left + 1;
-        }
-        supabase
-          .from('profile_photos')
-          .update(analyticsUpdate)
-          .eq('id', topPhoto.id)
-          .then(({ error }: any) => { if (error) console.warn('Analytics update failed:', error.message); });
-      }
+      const { data: matchId, error: swipeError } = await supabase.rpc('record_swipe', {
+        p_swiped_id: profile.id,
+        p_direction: direction,
+        p_photo_id: topPhoto?.id ?? null,
+      });
 
-      // 5. Check for match on right swipe
-      if (direction === 'right') {
-        const { data: matchId } = await supabase.rpc('check_and_create_match', {
-          p_swiped_id: profile.id,
-        });
-        if (matchId) {
-          setMatchedProfile(profile);
-        }
-      }
+      if (swipeError) console.warn('record_swipe failed:', swipeError.message);
+      if (matchId) setMatchedProfile(profile);
     },
     [userId, queue]
   );
