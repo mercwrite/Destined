@@ -298,15 +298,19 @@ const styles = StyleSheet.create({
   // Profile expand sheet
   modalBackdrop: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
     height: SCREEN_H * 0.88,
+    width: Platform.OS === 'web' ? 400 : undefined,
     backgroundColor: colors.bg,
+    borderRadius: Platform.OS === 'web' ? radii.xl : undefined,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     paddingBottom: spacing.xxl,
+    overflow: 'hidden',
   },
   sheetHandle: {
     alignSelf: 'center',
