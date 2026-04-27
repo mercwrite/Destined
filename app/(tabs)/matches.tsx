@@ -17,6 +17,7 @@ import { colors, radii, spacing } from '@/theme';
 
 type ConversationItem = {
   matchId: string;
+  partnerId: string;
   partnerName: string;
   partnerPhoto: string;
   destination: string;
@@ -115,6 +116,7 @@ export default function MatchesScreen() {
 
       return {
         matchId: match.id,
+        partnerId: profile?.id ?? '',
         partnerName: profile?.name ?? 'Your match',
         partnerPhoto: photo,
         destination: profile?.destination ?? '',
@@ -137,6 +139,7 @@ export default function MatchesScreen() {
       pathname: '/chat',
       params: {
         matchId: item.matchId,
+        partnerId: item.partnerId,
         partnerName: item.partnerName,
         partnerPhoto: item.partnerPhoto,
         destination: item.destination,

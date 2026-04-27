@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Dimensions,
   Image,
   KeyboardAvoidingView,
+  Modal,
   NativeSyntheticEvent,
   Platform,
   Pressable,
@@ -14,12 +16,18 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText } from '@/components/Text';
+import ProfileCard, { type ProfileCardData } from '@/components/ProfileCard';
 import { useAuth } from '@/app/_layout';
+import { supabase } from '@/utils/supabase';
 import { useMessages } from '@/hooks/useMessages';
 import { colors, radii, shadows, spacing, typography } from '@/theme';
 
+const { height: SCREEN_H } = Dimensions.get('window');
+const PHOTO_SELECT = 'id, profile_id, url, display_order, impressions, swipe_left, swipe_right';
+
 type SearchParams = {
   matchId?: string;
+  partnerId?: string;
   partnerName?: string;
   partnerPhoto?: string;
   destination?: string;
@@ -30,6 +38,7 @@ export default function ChatScreen() {
   const params = useLocalSearchParams<SearchParams>();
   const router = useRouter();
   const matchId = params.matchId ?? '';
+  const partnerId = params.partnerId ?? '';
   const partnerName = params.partnerName ?? 'Your match';
   const partnerPhoto = params.partnerPhoto ?? '';
   const destination = params.destination ?? '';
@@ -37,6 +46,9 @@ export default function ChatScreen() {
 
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const [profilePreview, setProfilePreview] = useState<ProfileCardData | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const { session } = useAuth();
   const currentUserId = session?.user?.id;
@@ -59,6 +71,25 @@ export default function ChatScreen() {
     } catch {
       // error state handled by useMessages
     }
+  };
+
+  const handleAvatarPress = async () => {
+    if (!partnerId) return;
+    if (profilePreview) { setShowProfile(true); return; }
+    setProfileLoading(true);
+    const { data } = await supabase
+      .from('profiles')
+      .select(`id, name, date_of_birth, bio, location_city, gender, destination, hobbies, relationship_type, profile_photos(${PHOTO_SELECT})`)
+      .eq('id', partnerId)
+      .single();
+    if (data) {
+      const photos = ((data as any).profile_photos ?? [])
+        .slice()
+        .sort((a: any, b: any) => a.display_order - b.display_order);
+      setProfilePreview({ ...(data as any), photos });
+    }
+    setProfileLoading(false);
+    setShowProfile(true);
   };
 
   const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
@@ -90,13 +121,19 @@ export default function ChatScreen() {
             <AppText style={{ fontSize: 26, color: colors.ink, lineHeight: 30 }}>‹</AppText>
           </Pressable>
           <View style={styles.headerCenter}>
-            {partnerPhoto ? (
-              <Image source={{ uri: partnerPhoto }} style={styles.headerAvatar} />
-            ) : (
-              <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
-                <AppText style={{ fontSize: 16, color: colors.inkFaint }}>?</AppText>
-              </View>
-            )}
+            <Pressable
+              onPress={handleAvatarPress}
+              style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+              hitSlop={8}
+            >
+              {partnerPhoto ? (
+                <Image source={{ uri: partnerPhoto }} style={styles.headerAvatar} />
+              ) : (
+                <View style={[styles.headerAvatar, styles.avatarPlaceholder]}>
+                  <AppText style={{ fontSize: 16, color: colors.inkFaint }}>?</AppText>
+                </View>
+              )}
+            </Pressable>
             <View>
               <AppText variant="bodyMedium" color={colors.ink}>{partnerName}</AppText>
               <AppText variant="caption" color={online ? colors.success : colors.inkFaint}>
@@ -201,6 +238,29 @@ export default function ChatScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Profile preview modal — tapping the header avatar opens this */}
+      {showProfile && profilePreview ? (
+        <Modal
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          onRequestClose={() => setShowProfile(false)}
+        >
+          <View style={styles.previewBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowProfile(false)} />
+            <View style={styles.previewSheet}>
+              <View style={styles.previewHandle} />
+              <View style={styles.previewCard}>
+                <ProfileCard profile={profilePreview} />
+              </View>
+              <Pressable style={styles.previewClose} onPress={() => setShowProfile(false)}>
+                <AppText variant="bodyMedium" color={colors.inkSoft}>Close</AppText>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
     </View>
   );
 }
@@ -288,4 +348,42 @@ const styles = StyleSheet.create({
   },
   sendBtnActive: { backgroundColor: colors.accent, ...shadows.accent },
   sendBtnDisabled: { backgroundColor: colors.surfaceSoft, opacity: 0.5 },
+  // Profile preview modal
+  previewBackdrop: {
+    flex: 1,
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  previewSheet: {
+    height: SCREEN_H * 0.88,
+    width: Platform.OS === 'web' ? 400 : undefined,
+    backgroundColor: colors.bg,
+    borderRadius: Platform.OS === 'web' ? radii.xl : undefined,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    paddingBottom: spacing.xxl,
+    overflow: 'hidden',
+  },
+  previewHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.ruleStrong,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  previewCard: {
+    flex: 1,
+    marginHorizontal: spacing.edge,
+    marginBottom: spacing.md,
+    borderRadius: radii.card,
+    overflow: 'hidden',
+  },
+  previewClose: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
+  },
 });
