@@ -1,77 +1,151 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Image,
   Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
-} from "react-native";
-import { useRouter } from "expo-router";
-import { useAuth } from "@/app/_layout";
-import { supabase } from "@/utils/supabase";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { AppText } from "@/components/Text";
-import { colors, radii, spacing } from "@/theme";
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/app/_layout';
+import { supabase } from '@/utils/supabase';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { AppText } from '@/components/Text';
+import { colors, radii, spacing } from '@/theme';
 
-type MatchRow = {
-  id: string;
-  name: string | null;
-  destination: string | null;
-  photo_url: string | null;
-  matched_at: string;
-  online?: boolean;
+type ConversationItem = {
+  matchId: string;
+  partnerId: string;
+  partnerName: string;
+  partnerPhoto: string;
+  destination: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  isNewMatch: boolean;
 };
+
+function formatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return mins <= 1 ? 'just now' : `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
+}
 
 export default function MatchesScreen() {
   const { session } = useAuth();
   const router = useRouter();
-  const [matches, setMatches] = useState<MatchRow[]>([]);
+  const userId = session?.user?.id ?? null;
+
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [newMatches, setNewMatches] = useState<ConversationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const userId = session?.user?.id;
     if (!userId) { setLoading(false); return; }
 
-    const { data, error } = await supabase
-      .from("matches")
+    setLoading(true);
+    setError(null);
+
+    const { data: matches, error: matchError } = await supabase
+      .from('matches')
       .select(`
         id,
         created_at,
         user1_id,
         user2_id,
-        profiles!matches_user2_id_fkey(id, name, destination, profile_photos(url, display_order))
+        user1_profile:profiles!matches_user1_id_fkey(id, name, destination, profile_photos(url, display_order)),
+        user2_profile:profiles!matches_user2_id_fkey(id, name, destination, profile_photos(url, display_order))
       `)
       .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
-      .order("created_at", { ascending: false })
-      .limit(40);
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-    if (error || !data) {
+    if (matchError || !matches) {
+      setError(matchError?.message ?? 'Unable to load matches.');
       setLoading(false);
       return;
     }
 
-    const rows: MatchRow[] = (data as any[]).map((m) => {
-      const isUser1 = m.user1_id === userId;
-      // We need the OTHER user's profile — re-fetch if the join gave us the wrong side
-      const p = m.profiles;
-      const photos = (p?.profile_photos ?? []).sort((a: any, b: any) => a.display_order - b.display_order);
+    const matchIds = (matches as any[]).map((m) => m.id);
+
+    if (matchIds.length === 0) {
+      setConversations([]);
+      setNewMatches([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: messages, error: messageError } = await supabase
+      .from('messages')
+      .select('id, match_id, sender_id, content, created_at, read_at')
+      .in('match_id', matchIds)
+      .order('created_at', { ascending: false });
+
+    if (messageError) {
+      setError(messageError.message);
+      setLoading(false);
+      return;
+    }
+
+    const latestByMatch = new Map<string, any>();
+    const unreadByMatch = new Map<string, number>();
+
+    for (const msg of messages ?? []) {
+      if (!latestByMatch.has(msg.match_id)) {
+        latestByMatch.set(msg.match_id, msg);
+      }
+      if (msg.sender_id !== userId && msg.read_at == null) {
+        unreadByMatch.set(msg.match_id, (unreadByMatch.get(msg.match_id) ?? 0) + 1);
+      }
+    }
+
+    const normalized: ConversationItem[] = (matches as any[]).map((match) => {
+      const isUser1 = match.user1_id === userId;
+      const profile = isUser1 ? match.user2_profile : match.user1_profile;
+      const sortedPhotos = (profile?.profile_photos ?? [])
+        .slice()
+        .sort((a: any, b: any) => a.display_order - b.display_order);
+      const photo = sortedPhotos[0]?.url ?? '';
+      const latest = latestByMatch.get(match.id);
+
       return {
-        id: m.id,
-        name: p?.name ?? null,
-        destination: p?.destination ?? null,
-        photo_url: photos[0]?.url ?? null,
-        matched_at: m.created_at,
+        matchId: match.id,
+        partnerId: profile?.id ?? '',
+        partnerName: profile?.name ?? 'Your match',
+        partnerPhoto: photo,
+        destination: profile?.destination ?? '',
+        lastMessage: latest?.content ?? 'Say hello and plan the trip 👋',
+        time: latest ? formatTime(latest.created_at) : formatTime(match.created_at),
+        unread: unreadByMatch.get(match.id) ?? 0,
+        isNewMatch: !latest,
       };
     });
 
-    setMatches(rows);
+    setNewMatches(normalized.filter((c) => c.isNewMatch));
+    setConversations(normalized.filter((c) => !c.isNewMatch));
     setLoading(false);
-  }, [session?.user?.id]);
+  }, [userId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const openChat = (item: ConversationItem) => {
+    router.push({
+      pathname: '/chat',
+      params: {
+        matchId: item.matchId,
+        partnerId: item.partnerId,
+        partnerName: item.partnerName,
+        partnerPhoto: item.partnerPhoto,
+        destination: item.destination,
+      },
+    });
+  };
 
   return (
     <View style={styles.root}>
@@ -82,7 +156,11 @@ export default function MatchesScreen() {
           <View style={styles.centered}>
             <ActivityIndicator size="large" color={colors.accent} />
           </View>
-        ) : matches.length === 0 ? (
+        ) : error ? (
+          <View style={styles.centered}>
+            <AppText variant="body" color={colors.danger} align="center">{error}</AppText>
+          </View>
+        ) : newMatches.length === 0 && conversations.length === 0 ? (
           <View style={styles.centered}>
             <AppText style={{ fontSize: 40 }}>✈</AppText>
             <AppText variant="h3" color={colors.ink} align="center" style={{ marginTop: spacing.md }}>
@@ -93,114 +171,171 @@ export default function MatchesScreen() {
             </AppText>
           </View>
         ) : (
-          <FlatList
-            data={matches}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            renderItem={({ item }) => (
-              <MatchRow match={item} />
-            )}
-          />
+          <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxl }}>
+            {/* New matches horizontal strip */}
+            {newMatches.length > 0 ? (
+              <View style={styles.newMatchesSection}>
+                <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
+                  New matches · say hi
+                </AppText>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ paddingHorizontal: spacing.edge, gap: spacing.md }}
+                >
+                  {newMatches.map((m) => (
+                    <Pressable key={m.matchId} onPress={() => openChat(m)} style={styles.newMatchItem}>
+                      {m.partnerPhoto ? (
+                        <Image source={{ uri: m.partnerPhoto }} style={styles.newMatchPhoto} />
+                      ) : (
+                        <View style={[styles.newMatchPhoto, styles.avatarPlaceholder]}>
+                          <AppText style={{ fontSize: 20, color: colors.inkFaint }}>?</AppText>
+                        </View>
+                      )}
+                      <View style={styles.newMatchBadge}>
+                        <AppText style={{ color: colors.white, fontSize: 10 }}>✦</AppText>
+                      </View>
+                      <AppText variant="caption" color={colors.ink} style={{ marginTop: 6, fontWeight: '500' }}>
+                        {m.partnerName}
+                      </AppText>
+                      {m.destination ? (
+                        <AppText variant="caption" color={colors.accent} style={{ fontSize: 10 }}>
+                          ✈ {m.destination}
+                        </AppText>
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            {/* Conversation threads */}
+            {conversations.length > 0 ? (
+              <>
+                <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
+                  Messages
+                </AppText>
+                {conversations.map((c, i) => (
+                  <View key={c.matchId}>
+                    <Pressable
+                      onPress={() => openChat(c)}
+                      style={({ pressed }) => [styles.thread, pressed && { opacity: 0.85 }]}
+                    >
+                      <View style={styles.avatarWrap}>
+                        {c.partnerPhoto ? (
+                          <Image source={{ uri: c.partnerPhoto }} style={styles.avatar} />
+                        ) : (
+                          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                            <AppText style={{ fontSize: 20, color: colors.inkFaint }}>?</AppText>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.threadBody}>
+                        <View style={styles.threadTop}>
+                          <AppText variant="bodyMedium" color={colors.ink}>{c.partnerName}</AppText>
+                          <AppText variant="caption" color={colors.inkFaint}>{c.time}</AppText>
+                        </View>
+                        {c.destination ? (
+                          <AppText variant="caption" color={colors.accent} style={{ marginTop: 1 }}>
+                            ✈ {c.destination}
+                          </AppText>
+                        ) : null}
+                        <AppText
+                          variant="bodySmall"
+                          color={c.unread > 0 ? colors.ink : colors.inkSoft}
+                          numberOfLines={1}
+                          style={{ marginTop: 2, fontWeight: c.unread > 0 ? '500' : '400' }}
+                        >
+                          {c.lastMessage}
+                        </AppText>
+                      </View>
+
+                      {c.unread > 0 ? (
+                        <View style={styles.badge}>
+                          <AppText style={styles.badgeText}>{c.unread}</AppText>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                    {i < conversations.length - 1 ? (
+                      <View style={styles.separator} />
+                    ) : null}
+                  </View>
+                ))}
+              </>
+            ) : null}
+          </ScrollView>
         )}
       </SafeAreaView>
     </View>
   );
 }
 
-function MatchRow({ match }: { match: MatchRow }) {
-  const timeAgo = formatTime(match.matched_at);
-
-  return (
-    <Pressable style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
-      <View style={styles.avatarWrap}>
-        {match.photo_url ? (
-          <Image source={{ uri: match.photo_url }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <AppText style={{ fontSize: 22, color: colors.inkFaint }}>?</AppText>
-          </View>
-        )}
-        <View style={styles.matchBadge}>
-          <AppText style={{ fontSize: 9, color: colors.white }}>✦</AppText>
-        </View>
-      </View>
-
-      <View style={styles.rowBody}>
-        <View style={styles.rowTop}>
-          <AppText variant="bodyMedium" color={colors.ink}>
-            {match.name ?? "Your match"}
-          </AppText>
-          <AppText variant="caption" color={colors.inkFaint}>{timeAgo}</AppText>
-        </View>
-        {match.destination ? (
-          <AppText variant="caption" color={colors.accent} style={{ marginTop: 2 }}>
-            ✈ {match.destination}
-          </AppText>
-        ) : null}
-        <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: 3 }}>
-          Say hello and plan the trip 👋
-        </AppText>
-      </View>
-    </Pressable>
-  );
-}
-
-function formatTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return mins <= 1 ? "just now" : `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.floor(hrs / 24)}d`;
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   centered: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: spacing.xxxl,
     gap: spacing.sm,
   },
-  list: { paddingBottom: spacing.xxl },
+  newMatchesSection: { paddingVertical: spacing.md, marginBottom: spacing.sm },
+  sectionLabel: { paddingHorizontal: spacing.edge, marginBottom: spacing.md },
+  newMatchItem: { alignItems: 'center', width: 80 },
+  newMatchPhoto: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.full,
+    borderWidth: 2,
+    borderColor: colors.accent,
+  },
+  newMatchBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.bg,
+  },
+  thread: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.edge,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 56, height: 56, borderRadius: 28 },
+  avatarPlaceholder: {
+    backgroundColor: colors.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  threadBody: { flex: 1 },
+  threadTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+  },
   separator: {
     height: 1,
     backgroundColor: colors.rule,
     marginLeft: spacing.edge + 56 + spacing.md,
   },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.edge,
-    paddingVertical: spacing.md,
-    gap: spacing.md,
-  },
-  avatarWrap: { position: "relative" },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  avatarPlaceholder: {
-    backgroundColor: colors.surfaceSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  matchBadge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  badge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.bg,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  rowBody: { flex: 1 },
-  rowTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-  },
+  badgeText: { color: colors.white, fontSize: 11, fontWeight: '700' },
 });

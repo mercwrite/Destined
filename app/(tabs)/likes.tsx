@@ -1,18 +1,27 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Image, Pressable, SafeAreaView, StyleSheet, View } from "react-native";
-import { useAuth } from "@/app/_layout";
-import { supabase } from "@/utils/supabase";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { AppText } from "@/components/Text";
-import { colors, radii, shadows, spacing } from "@/theme";
+import { useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useAuth } from '@/app/_layout';
+import { supabase } from '@/utils/supabase';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { AppText } from '@/components/Text';
+import MatchModal from '@/components/MatchModal';
+import ProfileCard, { type ProfileCardData } from '@/components/ProfileCard';
+import { colors, radii, shadows, spacing } from '@/theme';
 
-type LikerProfile = {
-  id: string;
-  name: string | null;
-  date_of_birth: string | null;
-  destination: string | null;
-  photo_url: string | null;
-};
+const { height: SCREEN_H } = Dimensions.get('window');
+const NUM_COLS = Platform.OS === 'web' ? 5 : 2;
+const COL_GAP = Platform.OS === 'web' ? spacing.sm : spacing.sm;
 
 function computeAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -25,40 +34,116 @@ function computeAge(dob: string | null): number | null {
   return age;
 }
 
+const PHOTO_SELECT =
+  'id, profile_id, url, display_order, impressions, swipe_left, swipe_right';
+
 export default function LikesScreen() {
   const { session } = useAuth();
-  const [likers, setLikers] = useState<LikerProfile[]>([]);
+  const userId = session?.user?.id ?? null;
+
+  const [likers, setLikers] = useState<ProfileCardData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<ProfileCardData | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [matchedProfile, setMatchedProfile] = useState<ProfileCardData | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<ProfileCardData | null>(null);
 
+  // Own profile for MatchModal
   useEffect(() => {
-    const userId = session?.user?.id;
-    if (!userId) { setLoading(false); return; }
-
+    if (!userId) return;
     supabase
-      .from("swipes")
-      .select("swiper_id, profiles!swipes_swiper_id_fkey(id, name, date_of_birth, destination, profile_photos(url, display_order))")
-      .eq("swiped_id", userId)
-      .eq("direction", "right")
-      .order("created_at", { ascending: false })
-      .limit(50)
+      .from('profiles')
+      .select(`id, name, date_of_birth, bio, location_city, gender, destination, hobbies, relationship_type, profile_photos(${PHOTO_SELECT})`)
+      .eq('id', userId)
+      .single()
       .then(({ data }) => {
         if (data) {
-          const mapped: LikerProfile[] = (data as any[]).map((row) => {
-            const p = row.profiles;
-            const photos = (p?.profile_photos ?? []).sort((a: any, b: any) => a.display_order - b.display_order);
-            return {
-              id: p?.id ?? row.swiper_id,
-              name: p?.name ?? null,
-              date_of_birth: p?.date_of_birth ?? null,
-              destination: p?.destination ?? null,
-              photo_url: photos[0]?.url ?? null,
-            };
-          });
-          setLikers(mapped);
+          const photos = ((data as any).profile_photos ?? [])
+            .slice()
+            .sort((a: any, b: any) => a.display_order - b.display_order);
+          setCurrentUserProfile({ ...(data as any), photos });
         }
-        setLoading(false);
       });
-  }, [session?.user?.id]);
+  }, [userId]);
+
+  const load = useCallback(async () => {
+    if (!userId) { setLoading(false); return; }
+
+    // Profiles that liked me
+    const { data: likerRows } = await supabase
+      .from('swipes')
+      .select(`
+        swiper_id,
+        profiles!swipes_swiper_id_fkey(
+          id, name, date_of_birth, bio, location_city, gender, destination, hobbies, relationship_type,
+          profile_photos(${PHOTO_SELECT})
+        )
+      `)
+      .eq('swiped_id', userId)
+      .eq('direction', 'right')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    // Profiles I've already responded to — filter them out so the list
+    // only shows pending likes
+    const { data: mySwipes } = await supabase
+      .from('swipes')
+      .select('swiped_id')
+      .eq('swiper_id', userId);
+
+    const respondedTo = new Set((mySwipes ?? []).map((s: any) => s.swiped_id as string));
+
+    const mapped: ProfileCardData[] = (likerRows ?? [])
+      .filter((row: any) => !respondedTo.has(row.swiper_id as string))
+      .map((row: any) => {
+        const p = row.profiles;
+        const photos = (p?.profile_photos ?? [])
+          .slice()
+          .sort((a: any, b: any) => a.display_order - b.display_order);
+        return {
+          id: p?.id ?? row.swiper_id,
+          name: p?.name ?? null,
+          date_of_birth: p?.date_of_birth ?? null,
+          bio: p?.bio ?? null,
+          location_city: p?.location_city ?? null,
+          gender: p?.gender ?? null,
+          destination: p?.destination ?? null,
+          hobbies: p?.hobbies ?? null,
+          relationship_type: p?.relationship_type ?? null,
+          photos,
+        };
+      });
+
+    setLikers(mapped);
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // FR-MATCH-003: like back or reject from the expanded view
+  async function handleAction(direction: 'left' | 'right') {
+    if (!selected || !userId || actionLoading) return;
+    setActionLoading(true);
+
+    const topPhoto = selected.photos[0];
+    const { data: matchId, error } = await supabase.rpc('record_swipe', {
+      p_swiped_id: selected.id,
+      p_direction: direction,
+      p_photo_id: topPhoto?.id ?? null,
+    });
+
+    if (error) console.warn('record_swipe error:', error.message);
+
+    const acted = selected;
+    setSelected(null);
+    setActionLoading(false);
+    setLikers((prev) => prev.filter((l) => l.id !== acted.id));
+
+    // FR-MATCH-004: mutual like → show match modal
+    if (direction === 'right' && matchId) {
+      setMatchedProfile(acted);
+    }
+  }
 
   return (
     <View style={styles.root}>
@@ -83,16 +168,23 @@ export default function LikesScreen() {
           <FlatList
             data={likers}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={NUM_COLS}
+            key={NUM_COLS}
             contentContainerStyle={styles.grid}
-            columnWrapperStyle={{ gap: spacing.sm }}
-            ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+            style={styles.gridList}
+            columnWrapperStyle={{ gap: COL_GAP }}
+            ItemSeparatorComponent={() => <View style={{ height: COL_GAP }} />}
             renderItem={({ item }) => {
               const age = computeAge(item.date_of_birth);
+              const photoUrl = item.photos[0]?.url ?? null;
               return (
-                <Pressable style={[styles.card, shadows.md]}>
-                  {item.photo_url ? (
-                    <Image source={{ uri: item.photo_url }} style={styles.photo} resizeMode="cover" />
+                // FR-MATCH-002: tap to expand full profile
+                <Pressable
+                  style={({ pressed }) => [styles.card, shadows.md, pressed && { opacity: 0.88 }]}
+                  onPress={() => setSelected(item)}
+                >
+                  {photoUrl ? (
+                    <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />
                   ) : (
                     <View style={[styles.photo, styles.photoPlaceholder]}>
                       <AppText style={{ fontSize: 40, color: colors.inkFaint }}>?</AppText>
@@ -100,7 +192,7 @@ export default function LikesScreen() {
                   )}
                   <View style={styles.cardInfo}>
                     <AppText variant="bodyMedium" color={colors.ink} numberOfLines={1}>
-                      {item.name ?? "Someone"}{age !== null ? `, ${age}` : ""}
+                      {item.name ?? 'Someone'}{age !== null ? `, ${age}` : ''}
                     </AppText>
                     {item.destination ? (
                       <AppText variant="caption" color={colors.accent} numberOfLines={1}>
@@ -114,6 +206,53 @@ export default function LikesScreen() {
           />
         )}
       </SafeAreaView>
+
+      {/* FR-MATCH-002 / FR-MATCH-003: full profile sheet with like/reject actions */}
+      {selected ? (
+        <Modal
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          onRequestClose={() => setSelected(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelected(null)} />
+            <View style={styles.sheet}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.cardContainer}>
+                <ProfileCard profile={selected} />
+              </View>
+              <View style={styles.actions}>
+                <Pressable
+                  style={[styles.actionBtn, styles.rejectBtn]}
+                  onPress={() => handleAction('left')}
+                  disabled={actionLoading}
+                  accessibilityLabel="Pass"
+                >
+                  <AppText style={{ fontSize: 26, color: colors.danger }}>✕</AppText>
+                </Pressable>
+                <Pressable
+                  style={[styles.actionBtn, styles.likeBtn]}
+                  onPress={() => handleAction('right')}
+                  disabled={actionLoading}
+                  accessibilityLabel="Like back"
+                >
+                  <AppText style={{ fontSize: 26, color: colors.white }}>♥</AppText>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      ) : null}
+
+      {/* FR-MATCH-004: match notification */}
+      {matchedProfile ? (
+        <MatchModal
+          matchedProfile={matchedProfile}
+          currentUserProfile={currentUserProfile}
+          onKeepSwiping={() => setMatchedProfile(null)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -122,32 +261,92 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   centered: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.xxxl,
   },
+  gridList: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 1100 : undefined,
+  },
   grid: {
     paddingHorizontal: spacing.edge,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.xxl,
   },
   card: {
     flex: 1,
     borderRadius: radii.lg,
-    overflow: "hidden",
+    overflow: 'hidden',
     backgroundColor: colors.surface,
   },
   photo: {
-    width: "100%",
+    width: '100%',
     aspectRatio: 0.85,
   },
   photoPlaceholder: {
     backgroundColor: colors.surfaceSoft,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardInfo: {
     padding: spacing.sm,
     gap: 2,
+  },
+  // Profile expand sheet
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  sheet: {
+    height: SCREEN_H * 0.88,
+    width: Platform.OS === 'web' ? 400 : undefined,
+    backgroundColor: colors.bg,
+    borderRadius: Platform.OS === 'web' ? radii.xl : undefined,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    paddingBottom: spacing.xxl,
+    overflow: 'hidden',
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.ruleStrong,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  cardContainer: {
+    flex: 1,
+    marginHorizontal: spacing.edge,
+    marginBottom: spacing.md,
+    borderRadius: radii.card,
+    overflow: 'hidden',
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xxl,
+  },
+  actionBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: radii.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
+  },
+  rejectBtn: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.danger,
+  },
+  likeBtn: {
+    backgroundColor: colors.accent,
   },
 });

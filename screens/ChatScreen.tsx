@@ -1,56 +1,91 @@
 // ChatScreen.tsx — single conversation thread.
 // The destination banner at the top reminds both users of the shared trip.
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Image, ScrollView, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, SafeAreaView,
 } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText } from '../components/Text';
+import { useAuth } from '../app/_layout';
+import { useMessages } from '../hooks/useMessages';
 import { colors, spacing, radii, typography, shadows } from '../theme';
 
-export interface Message {
+type SearchParams = {
+  matchId?: string;
+  partnerName?: string;
+  partnerPhoto?: string;
+  destination?: string;
+  online?: string;
+};
+
+type ChatMessage = {
   id: string;
   text: string;
   fromMe: boolean;
   time: string;
-}
+};
 
-interface Props {
-  partnerName: string;
-  partnerPhoto: string;
-  destination: string;
-  online?: boolean;
-  messages: Message[];
-  onBack?: () => void;
-  onSend: (text: string) => void;
-  onOpenProfile?: () => void;
-}
+export function ChatScreen() {
+  const params = useLocalSearchParams<SearchParams>();
+  const router = useRouter();
+  const matchId = params.matchId ?? '';
+  const partnerName = params.partnerName ?? 'Your match';
+  const partnerPhoto = params.partnerPhoto ?? '';
+  const destination = params.destination ?? '';
+  const online = params.online === 'true';
 
-export function ChatScreen({
-  partnerName, partnerPhoto, destination, online,
-  messages, onBack, onSend, onOpenProfile,
-}: Props) {
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
-  const send = () => {
+  const { session } = useAuth();
+  const currentUserId = session?.user?.id;
+
+  const {
+    messages,
+    loading,
+    error,
+    loadMessages,
+    sendMessage,
+    subscribeToMessages,
+  } = useMessages();
+
+  useEffect(() => {
+    if (!matchId) return;
+    loadMessages(matchId);
+    subscribeToMessages(matchId);
+  }, [matchId, loadMessages, subscribeToMessages]);
+
+  const send = async () => {
     const text = draft.trim();
-    if (!text) return;
-    onSend(text);
-    setDraft('');
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    if (!text || !matchId) return;
+
+    try {
+      await sendMessage(matchId, text);
+      setDraft('');
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    } catch {
+      // error state is handled by useMessages
+    }
   };
+
+  const chatMessages: ChatMessage[] = messages.map((m) => ({
+    id: m.id,
+    text: m.content,
+    fromMe: m.sender_id === currentUserId,
+    time: new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+  }));
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={onBack} hitSlop={12} style={styles.back}>
+          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
             <AppText style={{ fontSize: 22, color: colors.ink }}>‹</AppText>
           </Pressable>
-          <Pressable onPress={onOpenProfile} style={styles.headerCenter}>
+          <View style={styles.headerCenter}>
             <Image source={{ uri: partnerPhoto }} style={styles.headerAvatar} />
             <View>
               <AppText variant="bodyMedium" color={colors.ink}>{partnerName}</AppText>
@@ -58,7 +93,7 @@ export function ChatScreen({
                 {online ? 'Online now' : 'Active recently'}
               </AppText>
             </View>
-          </Pressable>
+          </View>
           <Pressable hitSlop={12}>
             <AppText style={{ fontSize: 18, color: colors.inkSoft }}>⋯</AppText>
           </Pressable>
@@ -89,8 +124,18 @@ export function ChatScreen({
             contentContainerStyle={styles.thread}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
           >
-            {messages.map((m, i) => {
-              const showTime = i === 0 || messages[i - 1].time !== m.time;
+            {loading ? (
+              <AppText variant="caption" color={colors.inkSoft} align="center" style={{ marginVertical: spacing.md }}>
+                Loading messages…
+              </AppText>
+            ) : null}
+            {error ? (
+              <AppText variant="caption" color={colors.accent} align="center" style={{ marginVertical: spacing.md }}>
+                {error}
+              </AppText>
+            ) : null}
+            {chatMessages.map((m, i) => {
+              const showTime = i === 0 || chatMessages[i - 1].time !== m.time;
               return (
                 <View key={m.id}>
                   {showTime ? (
@@ -130,7 +175,8 @@ export function ChatScreen({
             </View>
             <Pressable
               onPress={send}
-              style={[styles.sendBtn, draft.trim() ? styles.sendBtnActive : null]}
+              disabled={!draft.trim()}
+              style={[styles.sendBtn, draft.trim() ? styles.sendBtnActive : styles.sendBtnDisabled]}
             >
               <AppText style={{ fontSize: 16, color: draft.trim() ? colors.white : colors.inkFaint }}>↑</AppText>
             </Pressable>
@@ -231,5 +277,9 @@ const styles = StyleSheet.create({
   sendBtnActive: {
     backgroundColor: colors.accent,
     ...shadows.accent,
+  },
+  sendBtnDisabled: {
+    backgroundColor: colors.surfaceSoft,
+    opacity: 0.5,
   },
 });
