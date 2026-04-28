@@ -1,4 +1,16 @@
-import { Alert, ActivityIndicator, Modal, Platform, SafeAreaView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  ActivityIndicator,
+  Image,
+  Modal,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/app/_layout";
@@ -7,7 +19,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { AppText } from "@/components/Text";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { colors, spacing, radii } from "@/theme";
+import { colors, radii, spacing } from "@/theme";
 
 type SettingItem = {
   label: string;
@@ -21,6 +33,7 @@ type DiscoverySettings = {
   preferred_age_min: number;
   preferred_age_max: number;
   preferred_genders: string[];
+  discoverable: boolean;
 };
 
 type NotificationSettings = {
@@ -28,11 +41,21 @@ type NotificationSettings = {
   notify_matches: boolean;
 };
 
+type BlockedUser = {
+  blockId: string;
+  blockedId: string;
+  name: string;
+  photo: string;
+};
+
 const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Other"];
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { session } = useAuth();
+  const userId = session?.user?.id;
+
+  // ── Discovery preferences ──────────────────────────────────────────────────
   const [discoveryVisible, setDiscoveryVisible] = useState(false);
   const [discoverySettings, setDiscoverySettings] = useState<DiscoverySettings | null>(null);
   const [isLoadingDiscovery, setIsLoadingDiscovery] = useState(false);
@@ -40,6 +63,7 @@ export default function SettingsScreen() {
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
   const [discoverySaved, setDiscoverySaved] = useState(false);
 
+  // ── Notifications ──────────────────────────────────────────────────────────
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -47,21 +71,14 @@ export default function SettingsScreen() {
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [notificationsSaved, setNotificationsSaved] = useState(false);
 
-  async function handleSignOut() {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await supabase.auth.signOut();
-        },
-      },
-    ]);
-  }
+  // ── Blocked users ──────────────────────────────────────────────────────────
+  const [blockedVisible, setBlockedVisible] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [isLoadingBlocked, setIsLoadingBlocked] = useState(false);
+  const [blockedError, setBlockedError] = useState<string | null>(null);
 
+  // ── Load discovery preferences ─────────────────────────────────────────────
   useEffect(() => {
-    const userId = session?.user?.id;
     if (!discoveryVisible || !userId) return;
 
     async function loadDiscoveryPreferences() {
@@ -71,7 +88,7 @@ export default function SettingsScreen() {
 
       const { data, error } = await supabase
         .from("user_settings")
-        .select("preferred_distance_km, preferred_age_min, preferred_age_max, preferred_genders")
+        .select("preferred_distance_km, preferred_age_min, preferred_age_max, preferred_genders, discoverable")
         .eq("id", userId)
         .single();
 
@@ -84,6 +101,7 @@ export default function SettingsScreen() {
           preferred_age_min: data.preferred_age_min ?? 18,
           preferred_age_max: data.preferred_age_max ?? 99,
           preferred_genders: data.preferred_genders ?? [],
+          discoverable: data.discoverable ?? true,
         });
       }
 
@@ -91,10 +109,10 @@ export default function SettingsScreen() {
     }
 
     loadDiscoveryPreferences();
-  }, [discoveryVisible, session?.user?.id]);
+  }, [discoveryVisible, userId]);
 
+  // ── Load notification preferences ─────────────────────────────────────────
   useEffect(() => {
-    const userId = session?.user?.id;
     if (!notificationsVisible || !userId) return;
 
     async function loadNotificationPreferences() {
@@ -122,10 +140,52 @@ export default function SettingsScreen() {
     }
 
     loadNotificationPreferences();
-  }, [notificationsVisible, session?.user?.id]);
+  }, [notificationsVisible, userId]);
 
+  // ── Load blocked users ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!blockedVisible || !userId) return;
+
+    async function loadBlockedUsers() {
+      setIsLoadingBlocked(true);
+      setBlockedError(null);
+
+      const { data, error } = await supabase
+        .from("blocked_users")
+        .select(`
+          id,
+          blocked_id,
+          blocked_profile:profiles!blocked_users_blocked_id_fkey(id, name, profile_photos(url, display_order))
+        `)
+        .eq("blocker_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        setBlockedError(error.message ?? "Unable to load blocked users.");
+      } else {
+        setBlockedUsers(
+          (data ?? []).map((b: any) => {
+            const photos = (b.blocked_profile?.profile_photos ?? [])
+              .slice()
+              .sort((a: any, z: any) => a.display_order - z.display_order);
+            return {
+              blockId: b.id,
+              blockedId: b.blocked_id,
+              name: b.blocked_profile?.name ?? "Unknown user",
+              photo: photos[0]?.url ?? "",
+            };
+          })
+        );
+      }
+
+      setIsLoadingBlocked(false);
+    }
+
+    loadBlockedUsers();
+  }, [blockedVisible, userId]);
+
+  // ── Save discovery preferences ─────────────────────────────────────────────
   async function handleSaveDiscoveryPreferences() {
-    const userId = session?.user?.id;
     if (!userId || !discoverySettings) return;
 
     setIsSavingDiscovery(true);
@@ -138,6 +198,7 @@ export default function SettingsScreen() {
         preferred_age_min: discoverySettings.preferred_age_min,
         preferred_age_max: discoverySettings.preferred_age_max,
         preferred_genders: discoverySettings.preferred_genders,
+        discoverable: discoverySettings.discoverable,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
@@ -171,8 +232,8 @@ export default function SettingsScreen() {
     setDiscoverySaved(false);
   }
 
+  // ── Save notification preferences ─────────────────────────────────────────
   async function handleSaveNotificationPreferences() {
-    const userId = session?.user?.id;
     if (!userId || !notificationSettings) return;
 
     setIsSavingNotifications(true);
@@ -203,6 +264,18 @@ export default function SettingsScreen() {
     setNotificationsSaved(false);
   }
 
+  // ── Unblock a user ─────────────────────────────────────────────────────────
+  async function handleUnblock(blockId: string) {
+    const { error } = await supabase
+      .from("blocked_users")
+      .delete()
+      .eq("id", blockId);
+    if (!error) {
+      setBlockedUsers((prev) => prev.filter((b) => b.blockId !== blockId));
+    }
+  }
+
+  // ── Change password ────────────────────────────────────────────────────────
   async function handleChangePassword() {
     const email = session?.user?.email;
     if (!email) {
@@ -247,6 +320,114 @@ export default function SettingsScreen() {
     }
   }
 
+  // ── Sign out ───────────────────────────────────────────────────────────────
+  async function handleSignOut() {
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to sign out?")) {
+        await supabase.auth.signOut();
+      }
+    } else {
+      Alert.alert("Sign out", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            await supabase.auth.signOut();
+          },
+        },
+      ]);
+    }
+  }
+
+  // ── Disable account ────────────────────────────────────────────────────────
+  async function handleDisableAccount() {
+    if (!userId) return;
+
+    const doDisable = async () => {
+      await supabase
+        .from("user_settings")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("id", userId);
+      await supabase.auth.signOut();
+    };
+
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          "Disable your account? Your profile will be hidden from discovery. You can reactivate by logging back in."
+        )
+      ) {
+        await doDisable();
+      }
+    } else {
+      Alert.alert(
+        "Disable account",
+        "Your profile will be hidden from discovery. You can reactivate by logging back in.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Disable", style: "destructive", onPress: doDisable },
+        ]
+      );
+    }
+  }
+
+  // ── Delete account ─────────────────────────────────────────────────────────
+  async function handleDeleteAccount() {
+    if (!userId) return;
+
+    const doDelete = async () => {
+      const { error } = await supabase.rpc("delete_account");
+      if (error) {
+        if (Platform.OS === "web") {
+          window.alert(`Error: ${error.message}`);
+        } else {
+          Alert.alert("Error", error.message);
+        }
+      }
+      // Auth state clears automatically via onAuthStateChange → redirects to welcome
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Delete your account? This cannot be undone.")) {
+        if (
+          window.confirm(
+            "Are you absolutely sure? All your profile data, matches, and messages will be permanently deleted."
+          )
+        ) {
+          await doDelete();
+        }
+      }
+    } else {
+      Alert.alert(
+        "Delete account",
+        "This will permanently delete your account and all associated data. This cannot be undone.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete account",
+            style: "destructive",
+            onPress: () => {
+              Alert.alert(
+                "Are you sure?",
+                "All your profile data, photos, matches, and messages will be permanently deleted.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Yes, delete everything",
+                    style: "destructive",
+                    onPress: doDelete,
+                  },
+                ]
+              );
+            },
+          },
+        ]
+      );
+    }
+  }
+
+  // ── Settings lists ─────────────────────────────────────────────────────────
   const accountItems: SettingItem[] = [
     { label: "Email", value: session?.user?.email ?? "—" },
     { label: "Change password", onPress: () => handleChangePassword() },
@@ -255,7 +436,12 @@ export default function SettingsScreen() {
   const prefsItems: SettingItem[] = [
     { label: "Discovery preferences", onPress: () => setDiscoveryVisible(true) },
     { label: "Notifications", onPress: () => setNotificationsVisible(true) },
-    { label: "Privacy", onPress: () => {} },
+    { label: "Blocked users", onPress: () => setBlockedVisible(true) },
+  ];
+
+  const dangerItems: SettingItem[] = [
+    { label: "Disable account", onPress: handleDisableAccount, danger: true },
+    { label: "Delete account", onPress: handleDeleteAccount, danger: true },
   ];
 
   return (
@@ -263,6 +449,7 @@ export default function SettingsScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         <ScreenHeader eyebrow="Your account" title="Settings" />
 
+        {/* ── Discovery preferences modal ──────────────────────────────────── */}
         <Modal
           visible={discoveryVisible}
           animationType="slide"
@@ -288,7 +475,40 @@ export default function SettingsScreen() {
                   </AppText>
                 </View>
               ) : (
-                <View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* Discoverable toggle */}
+                  <View style={styles.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                      <AppText variant="body" color={colors.ink}>
+                        Show me in discovery
+                      </AppText>
+                      <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
+                        When off, your profile won't appear in other users' stacks
+                      </AppText>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setDiscoverySettings((current) =>
+                          current ? { ...current, discoverable: !current.discoverable } : current
+                        )
+                      }
+                      activeOpacity={0.7}
+                      style={[
+                        styles.toggle,
+                        discoverySettings?.discoverable ? styles.toggleOn : styles.toggleOff,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.toggleThumb,
+                          discoverySettings?.discoverable ? styles.toggleThumbOn : styles.toggleThumbOff,
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.toggleDivider} />
+
                   <View style={styles.inputGroup}>
                     <AppText variant="label" color={colors.inkSoft} style={styles.inputLabel}>
                       Distance (km)
@@ -398,12 +618,13 @@ export default function SettingsScreen() {
                       disabled={!discoverySettings || isSavingDiscovery}
                     />
                   </View>
-                </View>
+                </ScrollView>
               )}
             </Card>
           </View>
         </Modal>
 
+        {/* ── Notifications modal ──────────────────────────────────────────── */}
         <Modal
           visible={notificationsVisible}
           animationType="slide"
@@ -432,9 +653,7 @@ export default function SettingsScreen() {
                 <View>
                   <View style={styles.toggleRow}>
                     <View style={{ flex: 1 }}>
-                      <AppText variant="body" color={colors.ink}>
-                        Messages
-                      </AppText>
+                      <AppText variant="body" color={colors.ink}>Messages</AppText>
                       <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
                         Get notified about new messages
                       </AppText>
@@ -466,9 +685,7 @@ export default function SettingsScreen() {
 
                   <View style={styles.toggleRow}>
                     <View style={{ flex: 1 }}>
-                      <AppText variant="body" color={colors.ink}>
-                        Matches
-                      </AppText>
+                      <AppText variant="body" color={colors.ink}>Matches</AppText>
                       <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
                         Get notified about new matches
                       </AppText>
@@ -521,7 +738,77 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
-        <View style={styles.content}>
+        {/* ── Blocked users modal ──────────────────────────────────────────── */}
+        <Modal
+          visible={blockedVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setBlockedVisible(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <Card variant="plain" style={styles.modalCard} padding="lg">
+              <View style={styles.modalHeader}>
+                <AppText variant="h3" color={colors.ink} style={{ flex: 1 }}>
+                  Blocked users
+                </AppText>
+                <TouchableOpacity onPress={() => setBlockedVisible(false)} activeOpacity={0.7}>
+                  <AppText variant="body" color={colors.accent}>Close</AppText>
+                </TouchableOpacity>
+              </View>
+
+              {isLoadingBlocked ? (
+                <View style={styles.modalLoading}>
+                  <ActivityIndicator size="large" color={colors.accent} />
+                </View>
+              ) : blockedError ? (
+                <AppText variant="bodySmall" color={colors.danger} style={styles.modalStatus}>
+                  {blockedError}
+                </AppText>
+              ) : blockedUsers.length === 0 ? (
+                <View style={styles.modalLoading}>
+                  <AppText variant="body" color={colors.inkSoft} align="center">
+                    You haven't blocked anyone.
+                  </AppText>
+                </View>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 320 }}>
+                  {blockedUsers.map((user, i) => (
+                    <View key={user.blockId}>
+                      <View style={styles.blockedRow}>
+                        {user.photo ? (
+                          <Image source={{ uri: user.photo }} style={styles.blockedAvatar} />
+                        ) : (
+                          <View style={[styles.blockedAvatar, styles.blockedAvatarPlaceholder]}>
+                            <AppText style={{ fontSize: 14, color: colors.inkFaint }}>?</AppText>
+                          </View>
+                        )}
+                        <AppText variant="bodyMedium" color={colors.ink} style={{ flex: 1 }}>
+                          {user.name}
+                        </AppText>
+                        <TouchableOpacity
+                          onPress={() => handleUnblock(user.blockId)}
+                          activeOpacity={0.7}
+                          style={styles.unblockBtn}
+                        >
+                          <AppText variant="bodySmall" color={colors.accent}>Unblock</AppText>
+                        </TouchableOpacity>
+                      </View>
+                      {i < blockedUsers.length - 1 ? (
+                        <View style={styles.blockedDivider} />
+                      ) : null}
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
+            </Card>
+          </View>
+        </Modal>
+
+        {/* ── Settings content ─────────────────────────────────────────────── */}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
             Account
           </AppText>
@@ -540,13 +827,22 @@ export default function SettingsScreen() {
             ))}
           </Card>
 
+          <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
+            Danger zone
+          </AppText>
+          <Card variant="plain" padding={0} style={styles.card}>
+            {dangerItems.map((item, i) => (
+              <SettingRow key={item.label} item={item} last={i === dangerItems.length - 1} />
+            ))}
+          </Card>
+
           <Card variant="plain" padding={0} style={[styles.card, { marginTop: spacing.lg }]}>
             <SettingRow
               item={{ label: "Sign out", onPress: handleSignOut, danger: true }}
               last
             />
           </Card>
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -582,7 +878,11 @@ function SettingRow({ item, last }: { item: SettingItem; last: boolean }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: spacing.edge, paddingTop: spacing.sm },
+  content: {
+    paddingHorizontal: spacing.edge,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxxl,
+  },
   sectionLabel: { marginBottom: spacing.sm, marginTop: spacing.lg },
   card: { borderRadius: radii.lg, overflow: "hidden" },
   row: {
@@ -634,6 +934,7 @@ const styles = StyleSheet.create({
   fieldRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: spacing.lg,
   },
   fieldColumn: {
     flex: 1,
@@ -652,6 +953,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: radii.full,
     borderWidth: 1,
+    marginBottom: spacing.sm,
   },
   genderChipSelected: {
     backgroundColor: colors.accent,
@@ -679,6 +981,7 @@ const styles = StyleSheet.create({
     padding: 2,
     justifyContent: "center",
     paddingHorizontal: 3,
+    flexShrink: 0,
   },
   toggleOn: {
     backgroundColor: colors.accent,
@@ -703,5 +1006,34 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     marginTop: spacing.lg,
+  },
+  // Blocked users
+  blockedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+  },
+  blockedAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  blockedAvatarPlaceholder: {
+    backgroundColor: colors.surfaceSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  unblockBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  blockedDivider: {
+    height: 1,
+    backgroundColor: colors.rule,
+    marginLeft: 44 + spacing.md,
   },
 });

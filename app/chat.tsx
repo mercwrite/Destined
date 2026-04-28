@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   KeyboardAvoidingView,
@@ -32,6 +33,8 @@ type SearchParams = {
   partnerPhoto?: string;
   destination?: string;
   online?: string;
+  starred?: string;
+  isUser1?: string;
 };
 
 export default function ChatScreen() {
@@ -43,12 +46,16 @@ export default function ChatScreen() {
   const partnerPhoto = params.partnerPhoto ?? '';
   const destination = params.destination ?? '';
   const online = params.online === 'true';
+  const isUser1 = params.isUser1 === 'true';
 
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<ScrollView>(null);
   const [profilePreview, setProfilePreview] = useState<ProfileCardData | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  const [starred, setStarred] = useState(params.starred === 'true');
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const { session } = useAuth();
   const currentUserId = session?.user?.id;
@@ -101,6 +108,70 @@ export default function ChatScreen() {
     }
   };
 
+  const handleStar = async () => {
+    setMenuVisible(false);
+    const newStarred = !starred;
+    const column = isUser1 ? 'starred_by_user1' : 'starred_by_user2';
+    const { error: err } = await supabase
+      .from('matches')
+      .update({ [column]: newStarred })
+      .eq('id', matchId);
+    if (!err) setStarred(newStarred);
+  };
+
+  const doUnmatch = async () => {
+    await supabase.from('matches').delete().eq('id', matchId);
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/matches');
+  };
+
+  const handleUnmatch = () => {
+    setMenuVisible(false);
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(`Unmatch with ${partnerName}? This will permanently delete your conversation.`)) {
+        doUnmatch();
+      }
+    } else {
+      Alert.alert(
+        'Unmatch',
+        `Unmatch with ${partnerName}? This will permanently delete your conversation.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Unmatch', style: 'destructive', onPress: doUnmatch },
+        ]
+      );
+    }
+  };
+
+  const doBlock = async () => {
+    if (!currentUserId) return;
+    await supabase.from('blocked_users').insert({
+      blocker_id: currentUserId,
+      blocked_id: partnerId,
+    });
+    await supabase.from('matches').delete().eq('id', matchId);
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/matches');
+  };
+
+  const handleBlock = () => {
+    setMenuVisible(false);
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(`Block and unmatch ${partnerName}? They won't be able to message you.`)) {
+        doBlock();
+      }
+    } else {
+      Alert.alert(
+        `Block ${partnerName}?`,
+        "They won't be able to message you and will be removed from your matches.",
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Block', style: 'destructive', onPress: doBlock },
+        ]
+      );
+    }
+  };
+
   const chatMessages = messages.map((m) => ({
     id: m.id,
     text: m.content,
@@ -135,14 +206,16 @@ export default function ChatScreen() {
               )}
             </Pressable>
             <View>
-              <AppText variant="bodyMedium" color={colors.ink}>{partnerName}</AppText>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {starred ? <AppText style={{ fontSize: 11, color: colors.accent }}>★</AppText> : null}
+                <AppText variant="bodyMedium" color={colors.ink}>{partnerName}</AppText>
+              </View>
               <AppText variant="caption" color={online ? colors.success : colors.inkFaint}>
                 {online ? 'Online now' : 'Active recently'}
               </AppText>
             </View>
           </View>
-          {/* Placeholder for future actions (report/block) */}
-          <Pressable hitSlop={12}>
+          <Pressable onPress={() => setMenuVisible(true)} hitSlop={12} style={styles.menuBtn}>
             <AppText style={{ fontSize: 20, color: colors.inkSoft }}>⋯</AppText>
           </Pressable>
         </View>
@@ -239,7 +312,7 @@ export default function ChatScreen() {
         </KeyboardAvoidingView>
       </SafeAreaView>
 
-      {/* Profile preview modal — tapping the header avatar opens this */}
+      {/* Profile preview modal */}
       {showProfile && profilePreview ? (
         <Modal
           transparent
@@ -259,6 +332,64 @@ export default function ChatScreen() {
               </Pressable>
             </View>
           </View>
+        </Modal>
+      ) : null}
+
+      {/* Three-dots action menu */}
+      {menuVisible ? (
+        <Modal
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setMenuVisible(false)}
+        >
+          <Pressable style={styles.menuBackdrop} onPress={() => setMenuVisible(false)}>
+            <View
+              style={[
+                styles.menuSheet,
+                Platform.OS === 'web' ? styles.menuSheetWeb : styles.menuSheetMobile,
+              ]}
+            >
+              <View style={styles.menuHandle} />
+
+              <Pressable
+                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                onPress={handleStar}
+              >
+                <AppText style={styles.menuItemStar}>{starred ? '★' : '☆'}</AppText>
+                <AppText variant="body" color={colors.ink}>
+                  {starred ? 'Unstar conversation' : 'Star conversation'}
+                </AppText>
+              </Pressable>
+
+              <View style={styles.menuDivider} />
+
+              <Pressable
+                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                onPress={handleUnmatch}
+              >
+                <AppText variant="body" color={colors.danger}>Unmatch</AppText>
+              </Pressable>
+
+              <View style={styles.menuDivider} />
+
+              <Pressable
+                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                onPress={handleBlock}
+              >
+                <AppText variant="body" color={colors.danger}>Block {partnerName}</AppText>
+              </Pressable>
+
+              <View style={styles.menuDivider} />
+
+              <Pressable
+                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                onPress={() => setMenuVisible(false)}
+              >
+                <AppText variant="bodyMedium" color={colors.inkSoft} align="center">Cancel</AppText>
+              </Pressable>
+            </View>
+          </Pressable>
         </Modal>
       ) : null}
     </View>
@@ -284,6 +415,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  menuBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   destBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -385,5 +517,50 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xl,
+  },
+  // Action menu modal
+  menuBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
+    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+  },
+  menuSheet: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+  },
+  menuSheetMobile: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xxl,
+  },
+  menuSheetWeb: {
+    width: 320,
+  },
+  menuHandle: {
+    alignSelf: 'center',
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.ruleStrong,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+  },
+  menuItemStar: {
+    fontSize: 16,
+    color: colors.accent,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: colors.rule,
+    marginHorizontal: spacing.md,
   },
 });
