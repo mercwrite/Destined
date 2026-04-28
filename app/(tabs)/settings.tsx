@@ -54,6 +54,10 @@ export default function SettingsScreen() {
   const [privacyError, setPrivacyError] = useState<string | null>(null);
   const [privacySaved, setPrivacySaved] = useState(false);
 
+  const [isDeactivating, setIsDeactivating] = useState(false);
+  const [deactivationError, setDeactivationError] = useState<string | null>(null);
+  const [deactivationSuccess, setDeactivationSuccess] = useState(false);
+
   async function handleSignOut() {
     if (Platform.OS === "web") {
       const confirmed = window.confirm("Are you sure you want to sign out?");
@@ -254,6 +258,73 @@ export default function SettingsScreen() {
     setNotificationsVisible(false);
     setNotificationsError(null);
     setNotificationsSaved(false);
+  }
+
+  async function performDeactivateAccount() {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    setIsDeactivating(true);
+    setDeactivationError(null);
+    setDeactivationSuccess(false);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_active: false, is_discoverable: false })
+      .eq("id", userId);
+
+    setIsDeactivating(false);
+
+    if (error) {
+      setDeactivationError(error.message ?? "Unable to deactivate your account.");
+      return;
+    }
+
+    setDeactivationSuccess(true);
+
+    if (Platform.OS === "web") {
+      window.alert("Your account has been deactivated. Signing out now.");
+    } else {
+      Alert.alert("Account deactivated", "Your account has been deactivated. Signing out now.");
+    }
+
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      const message = signOutError.message ?? "Unable to sign out after deactivation.";
+      setDeactivationError(message);
+      if (Platform.OS === "web") {
+        window.alert(`Deactivation succeeded, but sign out failed: ${message}`);
+      } else {
+        Alert.alert("Sign out failed", message);
+      }
+      return;
+    }
+
+    router.replace("/(auth)/sign-in");
+  }
+
+  function handleDeactivateAccount() {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Deactivating your account will hide your profile and sign you out. Continue?"
+      );
+      if (confirmed) {
+        performDeactivateAccount();
+      }
+    } else {
+      Alert.alert(
+        "Deactivate account",
+        "Deactivating your account will hide your profile and sign you out.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Deactivate",
+            style: "destructive",
+            onPress: performDeactivateAccount,
+          },
+        ]
+      );
+    }
   }
 
   async function handleSavePrivacySettings() {
@@ -700,10 +771,27 @@ export default function SettingsScreen() {
 
           <Card variant="plain" padding={0} style={[styles.card, { marginTop: spacing.lg }]}>
             <SettingRow
+              item={{ label: "Deactivate account", onPress: isDeactivating ? undefined : () => handleDeactivateAccount(), danger: true }}
+              last={false}
+            />
+            <SettingRow
               item={{ label: "Sign out", onPress: () => handleSignOut(), danger: true }}
               last
             />
           </Card>
+          {isDeactivating ? (
+            <AppText variant="bodySmall" color={colors.inkSoft} style={styles.deactivationStatus}>
+              Deactivating your account...
+            </AppText>
+          ) : deactivationError ? (
+            <AppText variant="bodySmall" color={colors.danger} style={styles.deactivationStatus}>
+              {deactivationError}
+            </AppText>
+          ) : deactivationSuccess ? (
+            <AppText variant="bodySmall" color={colors.success} style={styles.deactivationStatus}>
+              Account deactivated successfully. Signing out...
+            </AppText>
+          ) : null}
         </View>
       </SafeAreaView>
     </View>
@@ -858,6 +946,10 @@ const styles = StyleSheet.create({
   },
   modalStatus: {
     marginTop: spacing.sm,
+  },
+  deactivationStatus: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.edge,
   },
   modalActions: {
     marginTop: spacing.lg,
