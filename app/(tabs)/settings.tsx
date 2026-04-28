@@ -23,6 +23,11 @@ type DiscoverySettings = {
   preferred_genders: string[];
 };
 
+type NotificationSettings = {
+  notify_messages: boolean;
+  notify_matches: boolean;
+};
+
 const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Other"];
 
 export default function SettingsScreen() {
@@ -34,6 +39,13 @@ export default function SettingsScreen() {
   const [isSavingDiscovery, setIsSavingDiscovery] = useState(false);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
   const [discoverySaved, setDiscoverySaved] = useState(false);
+
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const [notificationsSaved, setNotificationsSaved] = useState(false);
 
   async function handleSignOut() {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
@@ -80,6 +92,37 @@ export default function SettingsScreen() {
 
     loadDiscoveryPreferences();
   }, [discoveryVisible, session?.user?.id]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!notificationsVisible || !userId) return;
+
+    async function loadNotificationPreferences() {
+      setIsLoadingNotifications(true);
+      setNotificationsError(null);
+      setNotificationsSaved(false);
+
+      const { data, error } = await supabase
+        .from("user_settings")
+        .select("notify_messages, notify_matches")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        setNotificationsError(error.message ?? "Unable to load notification preferences.");
+        setNotificationSettings(null);
+      } else if (data) {
+        setNotificationSettings({
+          notify_messages: data.notify_messages ?? true,
+          notify_matches: data.notify_matches ?? true,
+        });
+      }
+
+      setIsLoadingNotifications(false);
+    }
+
+    loadNotificationPreferences();
+  }, [notificationsVisible, session?.user?.id]);
 
   async function handleSaveDiscoveryPreferences() {
     const userId = session?.user?.id;
@@ -128,6 +171,38 @@ export default function SettingsScreen() {
     setDiscoverySaved(false);
   }
 
+  async function handleSaveNotificationPreferences() {
+    const userId = session?.user?.id;
+    if (!userId || !notificationSettings) return;
+
+    setIsSavingNotifications(true);
+    setNotificationsError(null);
+
+    const { error } = await supabase
+      .from("user_settings")
+      .update({
+        notify_messages: notificationSettings.notify_messages,
+        notify_matches: notificationSettings.notify_matches,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+
+    setIsSavingNotifications(false);
+
+    if (error) {
+      setNotificationsError(error.message ?? "Unable to save preferences.");
+      setNotificationsSaved(false);
+    } else {
+      setNotificationsSaved(true);
+    }
+  }
+
+  function handleCloseNotifications() {
+    setNotificationsVisible(false);
+    setNotificationsError(null);
+    setNotificationsSaved(false);
+  }
+
   const accountItems: SettingItem[] = [
     { label: "Email", value: session?.user?.email ?? "—" },
     { label: "Change password", onPress: () => router.push("/(auth)/forgot-password") },
@@ -135,7 +210,7 @@ export default function SettingsScreen() {
 
   const prefsItems: SettingItem[] = [
     { label: "Discovery preferences", onPress: () => setDiscoveryVisible(true) },
-    { label: "Notifications", onPress: () => {} },
+    { label: "Notifications", onPress: () => setNotificationsVisible(true) },
     { label: "Privacy", onPress: () => {} },
   ];
 
@@ -285,6 +360,123 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
+        <Modal
+          visible={notificationsVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={handleCloseNotifications}
+        >
+          <View style={styles.modalBackdrop}>
+            <Card variant="plain" style={styles.modalCard} padding="lg">
+              <View style={styles.modalHeader}>
+                <AppText variant="h3" color={colors.ink} style={{ flex: 1 }}>
+                  Notifications
+                </AppText>
+                <TouchableOpacity onPress={handleCloseNotifications} activeOpacity={0.7}>
+                  <AppText variant="body" color={colors.accent}>Close</AppText>
+                </TouchableOpacity>
+              </View>
+
+              {isLoadingNotifications ? (
+                <View style={styles.modalLoading}>
+                  <ActivityIndicator size="large" color={colors.accent} />
+                  <AppText variant="bodySmall" color={colors.inkSoft} style={styles.modalStatus}>
+                    Loading preferences...
+                  </AppText>
+                </View>
+              ) : (
+                <View>
+                  <View style={styles.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                      <AppText variant="body" color={colors.ink}>
+                        Messages
+                      </AppText>
+                      <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
+                        Get notified about new messages
+                      </AppText>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setNotificationSettings((current) =>
+                          current
+                            ? { ...current, notify_messages: !current.notify_messages }
+                            : current
+                        )
+                      }
+                      activeOpacity={0.7}
+                      style={[
+                        styles.toggle,
+                        notificationSettings?.notify_messages ? styles.toggleOn : styles.toggleOff,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.toggleThumb,
+                          notificationSettings?.notify_messages ? styles.toggleThumbOn : styles.toggleThumbOff,
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.toggleDivider} />
+
+                  <View style={styles.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                      <AppText variant="body" color={colors.ink}>
+                        Matches
+                      </AppText>
+                      <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
+                        Get notified about new matches
+                      </AppText>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() =>
+                        setNotificationSettings((current) =>
+                          current
+                            ? { ...current, notify_matches: !current.notify_matches }
+                            : current
+                        )
+                      }
+                      activeOpacity={0.7}
+                      style={[
+                        styles.toggle,
+                        notificationSettings?.notify_matches ? styles.toggleOn : styles.toggleOff,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.toggleThumb,
+                          notificationSettings?.notify_matches ? styles.toggleThumbOn : styles.toggleThumbOff,
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {notificationsError ? (
+                    <AppText variant="bodySmall" color={colors.danger} style={styles.modalStatus}>
+                      {notificationsError}
+                    </AppText>
+                  ) : null}
+                  {notificationsSaved ? (
+                    <AppText variant="bodySmall" color={colors.success} style={styles.modalStatus}>
+                      Saved successfully.
+                    </AppText>
+                  ) : null}
+
+                  <View style={styles.modalActions}>
+                    <Button
+                      label="Save preferences"
+                      loading={isSavingNotifications}
+                      onPress={handleSaveNotificationPreferences}
+                      disabled={!notificationSettings || isSavingNotifications}
+                    />
+                  </View>
+                </View>
+              )}
+            </Card>
+          </View>
+        </Modal>
+
         <View style={styles.content}>
           <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
             Account
@@ -424,6 +616,43 @@ const styles = StyleSheet.create({
   genderChipUnselected: {
     backgroundColor: colors.surface,
     borderColor: colors.ruleStrong,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+  },
+  toggleDivider: {
+    height: 1,
+    backgroundColor: colors.rule,
+    marginVertical: spacing.md,
+  },
+  toggle: {
+    width: 56,
+    height: 32,
+    borderRadius: radii.full,
+    padding: 2,
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  toggleOn: {
+    backgroundColor: colors.accent,
+  },
+  toggleOff: {
+    backgroundColor: colors.rule,
+  },
+  toggleThumb: {
+    width: 26,
+    height: 26,
+    borderRadius: radii.full,
+    backgroundColor: colors.white,
+  },
+  toggleThumbOn: {
+    alignSelf: "flex-end",
+  },
+  toggleThumbOff: {
+    alignSelf: "flex-start",
   },
   modalStatus: {
     marginTop: spacing.sm,
