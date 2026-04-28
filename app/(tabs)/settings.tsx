@@ -1,4 +1,4 @@
-import { Alert, ActivityIndicator, Modal, SafeAreaView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, ActivityIndicator, Modal, Platform, SafeAreaView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/app/_layout";
@@ -203,9 +203,53 @@ export default function SettingsScreen() {
     setNotificationsSaved(false);
   }
 
+  async function handleChangePassword() {
+    const email = session?.user?.email;
+    if (!email) {
+      if (Platform.OS === "web") {
+        window.alert("Unable to determine your email address.");
+      } else {
+        Alert.alert("Error", "Unable to determine your email address.");
+      }
+      return;
+    }
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        `We'll send a password reset link to ${email}. Continue?`
+      );
+      if (confirmed) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) {
+          window.alert(`Error: ${error.message ?? "Unable to send reset link."}`);
+        } else {
+          window.alert(`Reset link sent to ${email}. Check your inbox.`);
+        }
+      }
+    } else {
+      Alert.alert("Send reset link?", `We'll send a password reset link to ${email}.`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Send",
+          onPress: async () => {
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            if (error) {
+              Alert.alert("Error", error.message ?? "Unable to send reset link.");
+            } else {
+              Alert.alert(
+                "Reset link sent",
+                `Check your inbox at ${email} for the password reset link.`
+              );
+            }
+          },
+        },
+      ]);
+    }
+  }
+
   const accountItems: SettingItem[] = [
     { label: "Email", value: session?.user?.email ?? "—" },
-    { label: "Change password", onPress: () => router.push("/(auth)/forgot-password") },
+    { label: "Change password", onPress: () => handleChangePassword() },
   ];
 
   const prefsItems: SettingItem[] = [
