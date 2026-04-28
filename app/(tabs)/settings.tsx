@@ -47,17 +47,50 @@ export default function SettingsScreen() {
   const [notificationsError, setNotificationsError] = useState<string | null>(null);
   const [notificationsSaved, setNotificationsSaved] = useState(false);
 
+  const [privacyVisible, setPrivacyVisible] = useState(false);
+  const [isDiscoverable, setIsDiscoverable] = useState<boolean | null>(null);
+  const [isLoadingPrivacy, setIsLoadingPrivacy] = useState(false);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+  const [privacyError, setPrivacyError] = useState<string | null>(null);
+  const [privacySaved, setPrivacySaved] = useState(false);
+
   async function handleSignOut() {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await supabase.auth.signOut();
+    console.log("[DEBUG] handleSignOut called");
+    
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to sign out?");
+      if (confirmed) {
+        console.log("[DEBUG] Signing out...");
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error("[DEBUG] Sign out error:", error);
+          window.alert(`Error signing out: ${error.message}`);
+        } else {
+          console.log("[DEBUG] Sign out successful, redirecting...");
+          window.alert("You have been signed out.");
+          router.replace("/(auth)/sign-in");
+        }
+      }
+    } else {
+      Alert.alert("Sign out", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            console.log("[DEBUG] Signing out...");
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+              console.error("[DEBUG] Sign out error:", error);
+              Alert.alert("Error", error.message ?? "Unable to sign out.");
+            } else {
+              console.log("[DEBUG] Sign out successful");
+              router.replace("/(auth)/sign-in");
+            }
+          },
         },
-      },
-    ]);
+      ]);
+    }
   }
 
   useEffect(() => {
@@ -123,6 +156,34 @@ export default function SettingsScreen() {
 
     loadNotificationPreferences();
   }, [notificationsVisible, session?.user?.id]);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!privacyVisible || !userId) return;
+
+    async function loadPrivacySettings() {
+      setIsLoadingPrivacy(true);
+      setPrivacyError(null);
+      setPrivacySaved(false);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("is_discoverable")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        setPrivacyError(error.message ?? "Unable to load privacy settings.");
+        setIsDiscoverable(null);
+      } else {
+        setIsDiscoverable(data?.is_discoverable ?? false);
+      }
+
+      setIsLoadingPrivacy(false);
+    }
+
+    loadPrivacySettings();
+  }, [privacyVisible, session?.user?.id]);
 
   async function handleSaveDiscoveryPreferences() {
     const userId = session?.user?.id;
@@ -203,6 +264,34 @@ export default function SettingsScreen() {
     setNotificationsSaved(false);
   }
 
+  async function handleSavePrivacySettings() {
+    const userId = session?.user?.id;
+    if (!userId || isDiscoverable === null) return;
+
+    setIsSavingPrivacy(true);
+    setPrivacyError(null);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_discoverable: isDiscoverable })
+      .eq("id", userId);
+
+    setIsSavingPrivacy(false);
+
+    if (error) {
+      setPrivacyError(error.message ?? "Unable to save privacy settings.");
+      setPrivacySaved(false);
+    } else {
+      setPrivacySaved(true);
+    }
+  }
+
+  function handleClosePrivacy() {
+    setPrivacyVisible(false);
+    setPrivacyError(null);
+    setPrivacySaved(false);
+  }
+
   async function handleChangePassword() {
     const email = session?.user?.email;
     if (!email) {
@@ -255,7 +344,7 @@ export default function SettingsScreen() {
   const prefsItems: SettingItem[] = [
     { label: "Discovery preferences", onPress: () => setDiscoveryVisible(true) },
     { label: "Notifications", onPress: () => setNotificationsVisible(true) },
-    { label: "Privacy", onPress: () => {} },
+    { label: "Privacy", onPress: () => setPrivacyVisible(true) },
   ];
 
   return (
@@ -521,6 +610,83 @@ export default function SettingsScreen() {
           </View>
         </Modal>
 
+        <Modal
+          visible={privacyVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={handleClosePrivacy}
+        >
+          <View style={styles.modalBackdrop}>
+            <Card variant="plain" style={styles.modalCard} padding="lg">
+              <View style={styles.modalHeader}>
+                <AppText variant="h3" color={colors.ink} style={{ flex: 1 }}>
+                  Privacy
+                </AppText>
+                <TouchableOpacity onPress={handleClosePrivacy} activeOpacity={0.7}>
+                  <AppText variant="body" color={colors.accent}>Close</AppText>
+                </TouchableOpacity>
+              </View>
+
+              {isLoadingPrivacy ? (
+                <View style={styles.modalLoading}>
+                  <ActivityIndicator size="large" color={colors.accent} />
+                  <AppText variant="bodySmall" color={colors.inkSoft} style={styles.modalStatus}>
+                    Loading privacy settings...
+                  </AppText>
+                </View>
+              ) : (
+                <View>
+                  <View style={styles.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                      <AppText variant="body" color={colors.ink}>
+                        Discoverable
+                      </AppText>
+                      <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
+                        Allow others to find you in the swipe queue.
+                      </AppText>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setIsDiscoverable((current) => (current === null ? true : !current))}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.toggle,
+                        isDiscoverable ? styles.toggleOn : styles.toggleOff,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.toggleThumb,
+                          isDiscoverable ? styles.toggleThumbOn : styles.toggleThumbOff,
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {privacyError ? (
+                    <AppText variant="bodySmall" color={colors.danger} style={styles.modalStatus}>
+                      {privacyError}
+                    </AppText>
+                  ) : null}
+                  {privacySaved ? (
+                    <AppText variant="bodySmall" color={colors.success} style={styles.modalStatus}>
+                      Saved successfully.
+                    </AppText>
+                  ) : null}
+
+                  <View style={styles.modalActions}>
+                    <Button
+                      label="Save privacy settings"
+                      loading={isSavingPrivacy}
+                      onPress={handleSavePrivacySettings}
+                      disabled={isSavingPrivacy || isDiscoverable === null}
+                    />
+                  </View>
+                </View>
+              )}
+            </Card>
+          </View>
+        </Modal>
+
         <View style={styles.content}>
           <AppText variant="label" color={colors.inkSoft} style={styles.sectionLabel}>
             Account
@@ -542,7 +708,7 @@ export default function SettingsScreen() {
 
           <Card variant="plain" padding={0} style={[styles.card, { marginTop: spacing.lg }]}>
             <SettingRow
-              item={{ label: "Sign out", onPress: handleSignOut, danger: true }}
+              item={{ label: "Sign out", onPress: () => handleSignOut(), danger: true }}
               last
             />
           </Card>
