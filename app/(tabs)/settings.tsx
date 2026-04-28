@@ -54,6 +54,9 @@ export default function SettingsScreen() {
   const [privacyError, setPrivacyError] = useState<string | null>(null);
   const [privacySaved, setPrivacySaved] = useState(false);
 
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+
   const [isDeactivating, setIsDeactivating] = useState(false);
   const [deactivationError, setDeactivationError] = useState<string | null>(null);
   const [deactivationSuccess, setDeactivationSuccess] = useState(false);
@@ -102,7 +105,7 @@ export default function SettingsScreen() {
         .from("user_settings")
         .select("preferred_distance_km, preferred_age_min, preferred_age_max, preferred_genders")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setDiscoveryError(error.message ?? "Unable to load discovery preferences.");
@@ -113,6 +116,14 @@ export default function SettingsScreen() {
           preferred_age_min: data.preferred_age_min ?? 18,
           preferred_age_max: data.preferred_age_max ?? 99,
           preferred_genders: data.preferred_genders ?? [],
+        });
+      } else {
+        // No user_settings exists, use defaults
+        setDiscoverySettings({
+          preferred_distance_km: 25,
+          preferred_age_min: 18,
+          preferred_age_max: 99,
+          preferred_genders: [],
         });
       }
 
@@ -135,7 +146,7 @@ export default function SettingsScreen() {
         .from("user_settings")
         .select("notify_messages, notify_matches")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setNotificationsError(error.message ?? "Unable to load notification preferences.");
@@ -144,6 +155,12 @@ export default function SettingsScreen() {
         setNotificationSettings({
           notify_messages: data.notify_messages ?? true,
           notify_matches: data.notify_matches ?? true,
+        });
+      } else {
+        // No user_settings exists, use defaults
+        setNotificationSettings({
+          notify_messages: true,
+          notify_matches: true,
         });
       }
 
@@ -166,13 +183,16 @@ export default function SettingsScreen() {
         .from("profiles")
         .select("is_discoverable")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setPrivacyError(error.message ?? "Unable to load privacy settings.");
         setIsDiscoverable(null);
+      } else if (data) {
+        setIsDiscoverable(data.is_discoverable ?? false);
       } else {
-        setIsDiscoverable(data?.is_discoverable ?? false);
+        // No profile exists, use default
+        setIsDiscoverable(false);
       }
 
       setIsLoadingPrivacy(false);
@@ -190,14 +210,14 @@ export default function SettingsScreen() {
 
     const { error } = await supabase
       .from("user_settings")
-      .update({
+      .upsert({
+        id: userId,
         preferred_distance_km: discoverySettings.preferred_distance_km,
         preferred_age_min: discoverySettings.preferred_age_min,
         preferred_age_max: discoverySettings.preferred_age_max,
         preferred_genders: discoverySettings.preferred_genders,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      }, { onConflict: "id" });
 
     setIsSavingDiscovery(false);
 
@@ -237,12 +257,12 @@ export default function SettingsScreen() {
 
     const { error } = await supabase
       .from("user_settings")
-      .update({
+      .upsert({
+        id: userId,
         notify_messages: notificationSettings.notify_messages,
         notify_matches: notificationSettings.notify_matches,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      }, { onConflict: "id" });
 
     setIsSavingNotifications(false);
 
@@ -260,6 +280,111 @@ export default function SettingsScreen() {
     setNotificationsSaved(false);
   }
 
+  async function performDeleteAccount() {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    setIsDeletingAccount(true);
+    setDeleteAccountError(null);
+
+    const deleteMessages = await supabase
+      .from("messages")
+      .delete()
+      .eq("sender_id", userId);
+    if (deleteMessages.error) {
+      setIsDeletingAccount(false);
+      setDeleteAccountError(deleteMessages.error.message ?? "Unable to delete your messages.");
+      return;
+    }
+
+    const deleteSwipes = await supabase
+      .from("swipes")
+      .delete()
+      .or(`swiper_id.eq.${userId},swiped_id.eq.${userId}`);
+    if (deleteSwipes.error) {
+      setIsDeletingAccount(false);
+      setDeleteAccountError(deleteSwipes.error.message ?? "Unable to delete your swipe history.");
+      return;
+    }
+
+    const deleteMatches = await supabase
+      .from("matches")
+      .delete()
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+    if (deleteMatches.error) {
+      setIsDeletingAccount(false);
+      setDeleteAccountError(deleteMatches.error.message ?? "Unable to delete your matches.");
+      return;
+    }
+
+    const deletePhotos = await supabase
+      .from("profile_photos")
+      .delete()
+      .eq("profile_id", userId);
+    if (deletePhotos.error) {
+      setIsDeletingAccount(false);
+      setDeleteAccountError(deletePhotos.error.message ?? "Unable to delete your profile photos.");
+      return;
+    }
+
+    const deleteSettings = await supabase
+      .from("user_settings")
+      .delete()
+      .eq("id", userId);
+    if (deleteSettings.error) {
+      setIsDeletingAccount(false);
+      setDeleteAccountError(deleteSettings.error.message ?? "Unable to delete your preferences.");
+      return;
+    }
+
+    const deleteProfile = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+    if (deleteProfile.error) {
+      setIsDeletingAccount(false);
+      setDeleteAccountError(deleteProfile.error.message ?? "Unable to delete your profile.");
+      return;
+    }
+
+    setIsDeletingAccount(false);
+
+    if (Platform.OS === "web") {
+      window.alert("Your account has been deleted permanently. Signing out now.");
+    } else {
+      Alert.alert("Account deleted", "Your account has been deleted permanently. Signing out now.");
+    }
+
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      setDeleteAccountError(signOutError.message ?? "Unable to sign out after account deletion.");
+      return;
+    }
+
+    router.replace("/(auth)/sign-in");
+  }
+
+  function handleDeleteAccount() {
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Deleting your account is permanent. This will remove your profile, preferences, photos, swipes, matches, and messages. Continue?"
+      );
+      if (confirmed) {
+        performDeleteAccount();
+      }
+      return;
+    }
+
+    Alert.alert(
+      "Delete account permanently",
+      "Deleting your account is permanent. This will remove your profile, preferences, photos, swipes, matches, and messages.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: performDeleteAccount },
+      ]
+    );
+  }
+
   async function performDeactivateAccount() {
     const userId = session?.user?.id;
     if (!userId) return;
@@ -270,8 +395,12 @@ export default function SettingsScreen() {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ is_active: false, is_discoverable: false })
-      .eq("id", userId);
+      .upsert({
+        id: userId,
+        is_active: false,
+        is_discoverable: false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "id" });
 
     setIsDeactivating(false);
 
@@ -336,8 +465,11 @@ export default function SettingsScreen() {
 
     const { error } = await supabase
       .from("profiles")
-      .update({ is_discoverable: isDiscoverable })
-      .eq("id", userId);
+      .upsert({
+        id: userId,
+        is_discoverable: isDiscoverable,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "id" });
 
     setIsSavingPrivacy(false);
 
@@ -775,11 +907,23 @@ export default function SettingsScreen() {
               last={false}
             />
             <SettingRow
+              item={{ label: "Delete account", onPress: isDeletingAccount ? undefined : () => handleDeleteAccount(), danger: true }}
+              last={false}
+            />
+            <SettingRow
               item={{ label: "Sign out", onPress: () => handleSignOut(), danger: true }}
               last
             />
           </Card>
-          {isDeactivating ? (
+          {isDeletingAccount ? (
+            <AppText variant="bodySmall" color={colors.inkSoft} style={styles.deactivationStatus}>
+              Deleting your account permanently...
+            </AppText>
+          ) : deleteAccountError ? (
+            <AppText variant="bodySmall" color={colors.danger} style={styles.deactivationStatus}>
+              {deleteAccountError}
+            </AppText>
+          ) : isDeactivating ? (
             <AppText variant="bodySmall" color={colors.inkSoft} style={styles.deactivationStatus}>
               Deactivating your account...
             </AppText>
