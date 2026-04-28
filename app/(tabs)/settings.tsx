@@ -55,18 +55,13 @@ export default function SettingsScreen() {
   const [privacySaved, setPrivacySaved] = useState(false);
 
   async function handleSignOut() {
-    console.log("[DEBUG] handleSignOut called");
-    
     if (Platform.OS === "web") {
       const confirmed = window.confirm("Are you sure you want to sign out?");
       if (confirmed) {
-        console.log("[DEBUG] Signing out...");
         const { error } = await supabase.auth.signOut();
         if (error) {
-          console.error("[DEBUG] Sign out error:", error);
           window.alert(`Error signing out: ${error.message}`);
         } else {
-          console.log("[DEBUG] Sign out successful, redirecting...");
           window.alert("You have been signed out.");
           router.replace("/(auth)/sign-in");
         }
@@ -78,13 +73,10 @@ export default function SettingsScreen() {
           text: "Sign out",
           style: "destructive",
           onPress: async () => {
-            console.log("[DEBUG] Signing out...");
             const { error } = await supabase.auth.signOut();
             if (error) {
-              console.error("[DEBUG] Sign out error:", error);
               Alert.alert("Error", error.message ?? "Unable to sign out.");
             } else {
-              console.log("[DEBUG] Sign out successful");
               router.replace("/(auth)/sign-in");
             }
           },
@@ -639,7 +631,7 @@ export default function SettingsScreen() {
                   <View style={styles.toggleRow}>
                     <View style={{ flex: 1 }}>
                       <AppText variant="body" color={colors.ink}>
-                        Discoverable
+                        Show my profile in discovery
                       </AppText>
                       <AppText variant="bodySmall" color={colors.inkSoft} style={{ marginTop: spacing.sm }}>
                         Allow others to find you in the swipe queue.
