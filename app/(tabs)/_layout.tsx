@@ -1,6 +1,6 @@
-import { Tabs, Slot, usePathname, useRouter } from "expo-router";
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Slot, Tabs, usePathname, useRouter } from "expo-router";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type TabConfig = {
   name: string;
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   webNavTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#E91E63",
+    color: "#1a1612",
     letterSpacing: 0.5,
   },
   webNavTabs: {

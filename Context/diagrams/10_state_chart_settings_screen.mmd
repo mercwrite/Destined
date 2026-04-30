@@ -1,0 +1,48 @@
+stateDiagram-v2
+    [*] --> MAIN_LIST
+
+    note right of MAIN_LIST
+        3 sections: Account, Preferences, Danger Zone.
+        Modals load data lazily when opened.
+    end note
+
+    MAIN_LIST --> DISCOVERY_MODAL : tap Discovery Preferences
+    MAIN_LIST --> NOTIFICATIONS_MODAL : tap Notifications
+    MAIN_LIST --> BLOCKED_MODAL : tap Blocked Users
+    MAIN_LIST --> CHANGE_PASSWORD : tap Change Password
+    MAIN_LIST --> SIGN_OUT_CONFIRM : tap Sign Out
+    MAIN_LIST --> DISABLE_CONFIRM : tap Disable Account
+    MAIN_LIST --> DELETE_CONFIRM : tap Delete Account
+
+    state DISCOVERY_MODAL {
+        [*] --> Loading
+        Loading --> Editing : user_settings.select() resolves
+        Editing --> Saving : tap Save Preferences
+        Saving --> Editing : error shown
+        Saving --> Editing : success, discoverySaved flash shown
+        Editing --> [*] : tap Close
+    }
+
+    state NOTIFICATIONS_MODAL {
+        [*] --> Loading
+        Loading --> Editing : user_settings.select() resolves
+        Editing --> Saving : tap Save
+        Saving --> Editing : saved or error
+        Editing --> [*] : tap Close
+    }
+
+    state BLOCKED_MODAL {
+        [*] --> Loading
+        Loading --> ListShown : blocked_users.select() resolves
+        ListShown --> ListShown : tap Unblock, row removed
+        ListShown --> [*] : tap Close
+    }
+
+    DISCOVERY_MODAL --> MAIN_LIST : closed
+    NOTIFICATIONS_MODAL --> MAIN_LIST : closed
+    BLOCKED_MODAL --> MAIN_LIST : closed
+
+    CHANGE_PASSWORD --> MAIN_LIST : reset email sent
+    SIGN_OUT_CONFIRM --> Unauthenticated : confirmed, auth.signOut called
+    DISABLE_CONFIRM --> Unauthenticated : confirmed, is_active set false then signOut
+    DELETE_CONFIRM --> Unauthenticated : double-confirmed, rpc delete_account called

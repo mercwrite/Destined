@@ -1,0 +1,31 @@
+stateDiagram-v2
+    [*] --> LOADING : screen mounts
+
+    LOADING --> BROWSING_GRID : load() resolves with likers
+    LOADING --> EMPTY : load() resolves, no likers
+
+    note right of BROWSING_GRID
+        FlatList of liker thumbnails.
+        2 columns on mobile, 5 columns on web.
+    end note
+
+    BROWSING_GRID --> PROFILE_EXPANDED : user taps a liker card
+
+    state PROFILE_EXPANDED {
+        [*] --> Viewing
+        Viewing --> ActingOnProfile : tap Like Back or Pass
+        ActingOnProfile --> [*]
+    }
+
+    PROFILE_EXPANDED --> BROWSING_GRID : backdrop tap or Pass or non-match right swipe
+    PROFILE_EXPANDED --> MATCH_OVERLAY : Like Back results in mutual match
+
+    note right of MATCH_OVERLAY
+        MatchModal shown.
+        Both user photos displayed.
+    end note
+
+    MATCH_OVERLAY --> BROWSING_GRID : Keep Swiping pressed
+    MATCH_OVERLAY --> MatchesTab : Message pressed, navigates away
+
+    BROWSING_GRID --> EMPTY : last liker actioned

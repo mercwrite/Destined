@@ -1,0 +1,24 @@
+stateDiagram-v2
+    [*] --> LOADING : screen focuses (useFocusEffect)
+
+    LOADING --> SPLIT_VIEW : load() resolves
+    LOADING --> EMPTY : no matches at all
+
+    state SPLIT_VIEW {
+        [*] --> Browsing
+        Browsing --> Browsing : tap new match or conversation row
+    }
+
+    note right of SPLIT_VIEW
+        Top strip: new matches with no messages yet.
+        Bottom list: conversations sorted starred first.
+    end note
+
+    SPLIT_VIEW --> ChatScreen : openChat() navigates to /chat route
+
+    note right of ChatScreen
+        /chat route is planned but
+        not yet implemented in the app.
+    end note
+
+    ChatScreen --> LOADING : back navigation re-focuses tab

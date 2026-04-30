@@ -22,7 +22,11 @@
       "Bash(git *)",
       "Bash(node *)",
       "Bash(npx tsc *)",
-      "Skill(claude-md-management:revise-claude-md)"
+      "Skill(claude-md-management:revise-claude-md)",
+      "Bash(mmdc --version)",
+      "Bash(npx --yes @mermaid-js/mermaid-cli --version)",
+      "Bash(command -v mmdc)",
+      "Bash(powershell.exe -Command \"Get-Command mmdc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")"
     ]
   }
 }

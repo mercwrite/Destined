@@ -1,0 +1,73 @@
+classDiagram
+    direction TB
+
+    class supabase {
+        <<Singleton Client>>
+        +auth: GoTrueClient
+        +from(table) QueryBuilder
+        +storage: StorageClient
+        +rpc(fn, params) RPCBuilder
+    }
+
+    class AuthContext {
+        <<React Context>>
+        +session: Session | null
+    }
+
+    class RootLayout {
+        <<app/_layout.tsx>>
+        -session: Session | null
+        -loading: boolean
+        -fontsLoaded: boolean
+        +useAuth() Session | null
+        -initSession() void
+        -subscribeAuthChanges() Subscription
+    }
+
+    class AuthGuard {
+        <<Inner Component>>
+        -segments: string[]
+        -watchEffect() void
+        -redirectToWelcome() void
+        -redirectToSwipe() void
+    }
+
+    class useSwipeQueue {
+        <<Custom Hook>>
+        -queue: ProfileCardData[]
+        -isLoading: boolean
+        -error: string | null
+        -matchedProfile: ProfileCardData | null
+        -isRefilling: MutableRef~boolean~
+        +currentProfile: ProfileCardData
+        +nextProfiles: ProfileCardData[]
+        +isEmpty: boolean
+        +recordSwipe(direction) Promise~void~
+        +clearMatch() void
+        +retry() void
+        -fetchSettings() FilterSettings
+        -fetchProfiles() ProfileCardData[]
+        -initialLoad() void
+    }
+
+    class SwipeQueueResult {
+        <<Return Type>>
+        +currentProfile: ProfileCardData | undefined
+        +nextProfiles: ProfileCardData[]
+        +isLoading: boolean
+        +isEmpty: boolean
+        +error: string | null
+        +matchedProfile: ProfileCardData | null
+        +recordSwipe(direction) void
+        +clearMatch() void
+        +retry() void
+    }
+
+    RootLayout --> AuthContext : provides
+    RootLayout *-- AuthGuard : contains
+    AuthGuard --> AuthContext : consumes
+    RootLayout --> supabase : auth.getSession + onAuthStateChange
+
+    useSwipeQueue --> AuthContext : useAuth userId
+    useSwipeQueue --> supabase : queries profiles + swipes + rpc record_swipe
+    useSwipeQueue ..> SwipeQueueResult : returns

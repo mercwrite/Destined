@@ -1,0 +1,38 @@
+stateDiagram-v2
+    [*] --> IDLE
+
+    IDLE --> PANNING : pan gesture starts (isTop=true, drawer closed)
+    IDLE --> FLYING_OFF : swipeLeft or swipeRight called via ref
+    IDLE --> DRAWER_OPEN : info button pressed
+
+    note right of IDLE
+        Photo navigation active in any top-card state.
+        Tap left half for prev photo.
+        Tap right half for next photo.
+    end note
+
+    state PANNING {
+        [*] --> Dragging
+        Dragging --> SpringBack : pan ends within 120px threshold
+        Dragging --> FLYING_OFF : exceeds 120px threshold
+        SpringBack --> [*]
+    }
+
+    state FLYING_OFF {
+        [*] --> Animating
+        Animating --> Removed : off-screen animation done, onSwipe fires
+    }
+
+    state DRAWER_OPEN {
+        [*] --> InfoVisible
+        InfoVisible --> Closing : close or backdrop pressed
+        Closing --> [*] : drawerProgress to 0 over 220ms
+    }
+
+    note right of DRAWER_OPEN
+        Pan gesture disabled while drawer is open.
+        drawerProgress animated to 1 on open.
+    end note
+
+    DRAWER_OPEN --> IDLE : drawer closes
+    PANNING --> IDLE : spring back completes

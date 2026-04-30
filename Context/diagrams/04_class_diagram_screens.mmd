@@ -1,0 +1,126 @@
+classDiagram
+    direction LR
+
+    class SwipeScreen {
+        <<app/(tabs)/swipe.tsx>>
+        -topCardRef: Ref~SwipeCardRef~
+        -currentUserProfile: ProfileCardData | null
+        -filterSettings: FilterSettings
+        -recentMatchPhotos: string[]
+        +handleSwipe(direction) void
+        +handleButtonSwipe(direction) void
+    }
+
+    class LikesScreen {
+        <<app/(tabs)/likes.tsx>>
+        -likers: ProfileCardData[]
+        -loading: boolean
+        -selected: ProfileCardData | null
+        -actionLoading: boolean
+        -matchedProfile: ProfileCardData | null
+        -currentUserProfile: ProfileCardData | null
+        +handleAction(direction) void
+        -load() void
+    }
+
+    class MatchesScreen {
+        <<app/(tabs)/matches.tsx>>
+        -conversations: ConversationItem[]
+        -newMatches: ConversationItem[]
+        -loading: boolean
+        -error: string | null
+        +openChat(item) void
+        -load() void
+    }
+
+    class ConversationItem {
+        <<Local Type>>
+        +matchId: string
+        +partnerId: string
+        +partnerName: string
+        +partnerPhoto: string
+        +destination: string
+        +lastMessage: string
+        +time: string
+        +unread: number
+        +isNewMatch: boolean
+        +starred: boolean
+        +isUser1: boolean
+    }
+
+    class ProfileScreen {
+        <<app/(tabs)/profile.tsx>>
+        -profile: Profile | null
+        -photos: ProfilePhoto[]
+        -form: FormState
+        -loading: boolean
+        -saving: boolean
+        -photoLoading: boolean
+        -scrollEnabled: boolean
+        -hobbyInput: string
+        +hasChanges: boolean
+        +handleSave() void
+        +handleAddPhoto(slotIndex) void
+        +handleDeletePhoto(photo) void
+        +handleReorder(photos) void
+        -loadData() void
+    }
+
+    class SettingsScreen {
+        <<app/(tabs)/settings.tsx>>
+        -discoverySettings: DiscoverySettings
+        -notificationSettings: NotificationSettings
+        -blockedUsers: BlockedUser[]
+        -discoveryVisible: boolean
+        -notificationsVisible: boolean
+        -blockedVisible: boolean
+        +handleSignOut() void
+        +handleDeleteAccount() void
+        +handleDisableAccount() void
+        +handleChangePassword() void
+    }
+
+    class SignInScreen {
+        <<app/(auth)/sign-in.tsx>>
+        -email: string
+        -password: string
+        -loading: boolean
+        -error: string | null
+        +handleSignIn() void
+    }
+
+    class SignUpScreen {
+        <<app/(auth)/sign-up.tsx>>
+        -email: string
+        -password: string
+        -confirm: string
+        -loading: boolean
+        -success: boolean
+        +handleSignUp() void
+    }
+
+    class ForgotPasswordScreen {
+        <<app/(auth)/forgot-password.tsx>>
+        -email: string
+        -loading: boolean
+        -sent: boolean
+        +handleReset() void
+    }
+
+    SwipeScreen --> useSwipeQueue : uses
+    SwipeScreen --> SwipeStack : renders
+    SwipeScreen --> ActionBar : renders
+    SwipeScreen --> MatchModal : renders conditionally
+    LikesScreen --> ProfileCard : renders in modal
+    LikesScreen --> MatchModal : renders conditionally
+    ProfileScreen --> PhotoGrid : renders
+    MatchesScreen ..> ConversationItem : uses locally
+
+    SwipeScreen ..> supabase : profiles, matches, user_settings
+    LikesScreen ..> supabase : swipes, rpc record_swipe
+    MatchesScreen ..> supabase : matches, messages
+    ProfileScreen ..> supabase : profiles, profile_photos, storage
+    SettingsScreen ..> supabase : user_settings, blocked_users, auth
+    SignInScreen ..> supabase : auth.signInWithPassword
+    SignUpScreen ..> supabase : auth.signUp
+    ForgotPasswordScreen ..> supabase : auth.resetPasswordForEmail

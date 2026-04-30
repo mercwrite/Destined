@@ -1,0 +1,47 @@
+stateDiagram-v2
+    [*] --> AppStart
+
+    state AppStart {
+        [*] --> LOADING
+        LOADING --> AUTHENTICATED : session found
+        LOADING --> UNAUTHENTICATED : no session
+    }
+
+    UNAUTHENTICATED --> WelcomeScreen
+    WelcomeScreen --> SignInScreen : tap Sign In
+    WelcomeScreen --> SignUpScreen : tap Create Account
+
+    state SignInScreen {
+        [*] --> FORM
+        FORM --> SUBMITTING : submit credentials
+        SUBMITTING --> FORM : error
+        SUBMITTING --> AUTHENTICATED : success
+    }
+
+    state SignUpScreen {
+        [*] --> FORM
+        FORM --> VALIDATION_ERROR : invalid input
+        VALIDATION_ERROR --> FORM : user edits
+        FORM --> SUBMITTING : submit
+        SUBMITTING --> FORM : error
+        SUBMITTING --> EMAIL_SENT : success
+        EMAIL_SENT --> SignInScreen : tap Go to Sign In
+    }
+
+    state ForgotPasswordScreen {
+        [*] --> FORM
+        FORM --> SUBMITTING : submit email
+        SUBMITTING --> FORM : error
+        SUBMITTING --> LINK_SENT : success
+        LINK_SENT --> SignInScreen : tap Back to Sign In
+    }
+
+    AUTHENTICATED --> SwipeTab : auth guard redirects
+
+    state AccountActions {
+        SignOut --> UNAUTHENTICATED : auth state change clears session
+        DeleteAccount --> UNAUTHENTICATED : account removed
+        DisableAccount --> UNAUTHENTICATED : is_active=false + signOut
+    }
+
+    SwipeTab --> AccountActions : user triggers from Settings

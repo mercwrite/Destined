@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuth } from "@/app/_layout";
 import { supabase } from "@/utils/supabase";
 import PhotoGrid from "@/components/PhotoGrid";
@@ -318,7 +319,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <GestureHandlerRootView style={styles.root}>
       <SafeAreaView style={{ flex: 1 }}>
         <ScreenHeader
           eyebrow="Your profile"
@@ -494,7 +495,7 @@ export default function ProfileScreen() {
           <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
