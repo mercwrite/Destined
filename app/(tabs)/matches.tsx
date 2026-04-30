@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/app/_layout';
 import { supabase } from '@/utils/supabase';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -25,6 +25,8 @@ type ConversationItem = {
   time: string;
   unread: number;
   isNewMatch: boolean;
+  starred: boolean;
+  isUser1: boolean;
 };
 
 function formatTime(iso: string): string {
@@ -59,6 +61,8 @@ export default function MatchesScreen() {
         created_at,
         user1_id,
         user2_id,
+        starred_by_user1,
+        starred_by_user2,
         user1_profile:profiles!matches_user1_id_fkey(id, name, destination, profile_photos(url, display_order)),
         user2_profile:profiles!matches_user2_id_fkey(id, name, destination, profile_photos(url, display_order))
       `)
@@ -113,6 +117,9 @@ export default function MatchesScreen() {
         .sort((a: any, b: any) => a.display_order - b.display_order);
       const photo = sortedPhotos[0]?.url ?? '';
       const latest = latestByMatch.get(match.id);
+      const starred: boolean = isUser1
+        ? (match.starred_by_user1 ?? false)
+        : (match.starred_by_user2 ?? false);
 
       return {
         matchId: match.id,
@@ -124,15 +131,21 @@ export default function MatchesScreen() {
         time: latest ? formatTime(latest.created_at) : formatTime(match.created_at),
         unread: unreadByMatch.get(match.id) ?? 0,
         isNewMatch: !latest,
+        starred,
+        isUser1,
       };
     });
 
+    const allConvos = normalized.filter((c) => !c.isNewMatch);
+    const starred = allConvos.filter((c) => c.starred);
+    const unstarred = allConvos.filter((c) => !c.starred);
+
     setNewMatches(normalized.filter((c) => c.isNewMatch));
-    setConversations(normalized.filter((c) => !c.isNewMatch));
+    setConversations([...starred, ...unstarred]);
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const openChat = (item: ConversationItem) => {
     router.push({
@@ -143,13 +156,15 @@ export default function MatchesScreen() {
         partnerName: item.partnerName,
         partnerPhoto: item.partnerPhoto,
         destination: item.destination,
+        starred: item.starred ? 'true' : 'false',
+        isUser1: item.isUser1 ? 'true' : 'false',
       },
     });
   };
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
         <ScreenHeader eyebrow="Your trips" title="Matches" />
 
         {loading ? (
@@ -181,7 +196,7 @@ export default function MatchesScreen() {
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: spacing.edge, gap: spacing.md }}
+                  contentContainerStyle={{ paddingHorizontal: spacing.edge }}
                 >
                   {newMatches.map((m) => (
                     <Pressable key={m.matchId} onPress={() => openChat(m)} style={styles.newMatchItem}>
@@ -195,11 +210,11 @@ export default function MatchesScreen() {
                       <View style={styles.newMatchBadge}>
                         <AppText style={{ color: colors.white, fontSize: 10 }}>✦</AppText>
                       </View>
-                      <AppText variant="caption" color={colors.ink} style={{ marginTop: 6, fontWeight: '500' }}>
+                      <AppText variant="caption" color={colors.ink} style={{ marginTop: 6, fontWeight: '500' }} numberOfLines={1}>
                         {m.partnerName}
                       </AppText>
                       {m.destination ? (
-                        <AppText variant="caption" color={colors.accent} style={{ fontSize: 10 }}>
+                        <AppText variant="caption" color={colors.accent} style={{ fontSize: 10 }} numberOfLines={1}>
                           ✈ {m.destination}
                         </AppText>
                       ) : null}
@@ -233,7 +248,12 @@ export default function MatchesScreen() {
 
                       <View style={styles.threadBody}>
                         <View style={styles.threadTop}>
-                          <AppText variant="bodyMedium" color={colors.ink}>{c.partnerName}</AppText>
+                          <View style={styles.threadNameRow}>
+                            {c.starred ? (
+                              <AppText style={styles.starIcon}>★</AppText>
+                            ) : null}
+                            <AppText variant="bodyMedium" color={colors.ink}>{c.partnerName}</AppText>
+                          </View>
                           <AppText variant="caption" color={colors.inkFaint}>{c.time}</AppText>
                         </View>
                         {c.destination ? (
@@ -282,7 +302,7 @@ const styles = StyleSheet.create({
   },
   newMatchesSection: { paddingVertical: spacing.md, marginBottom: spacing.sm },
   sectionLabel: { paddingHorizontal: spacing.edge, marginBottom: spacing.md },
-  newMatchItem: { alignItems: 'center', width: 80 },
+  newMatchItem: { alignItems: 'center', width: 80, marginRight: spacing.md },
   newMatchPhoto: {
     width: 72,
     height: 72,
@@ -321,7 +341,18 @@ const styles = StyleSheet.create({
   threadTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'baseline',
+    alignItems: 'center',
+  },
+  threadNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  starIcon: {
+    fontSize: 12,
+    color: colors.accent,
   },
   separator: {
     height: 1,
