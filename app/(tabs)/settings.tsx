@@ -90,7 +90,7 @@ export default function SettingsScreen() {
         .from("user_settings")
         .select("preferred_distance_km, preferred_age_min, preferred_age_max, preferred_genders, discoverable")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setDiscoveryError(error.message ?? "Unable to load discovery preferences.");
@@ -102,6 +102,14 @@ export default function SettingsScreen() {
           preferred_age_max: data.preferred_age_max ?? 99,
           preferred_genders: data.preferred_genders ?? [],
           discoverable: data.discoverable ?? true,
+        });
+      } else {
+        // No user_settings exists, use defaults
+        setDiscoverySettings({
+          preferred_distance_km: 25,
+          preferred_age_min: 18,
+          preferred_age_max: 99,
+          preferred_genders: [],
         });
       }
 
@@ -124,7 +132,7 @@ export default function SettingsScreen() {
         .from("user_settings")
         .select("notify_messages, notify_matches")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         setNotificationsError(error.message ?? "Unable to load notification preferences.");
@@ -133,6 +141,12 @@ export default function SettingsScreen() {
         setNotificationSettings({
           notify_messages: data.notify_messages ?? true,
           notify_matches: data.notify_matches ?? true,
+        });
+      } else {
+        // No user_settings exists, use defaults
+        setNotificationSettings({
+          notify_messages: true,
+          notify_matches: true,
         });
       }
 
@@ -193,15 +207,15 @@ export default function SettingsScreen() {
 
     const { error } = await supabase
       .from("user_settings")
-      .update({
+      .upsert({
+        id: userId,
         preferred_distance_km: discoverySettings.preferred_distance_km,
         preferred_age_min: discoverySettings.preferred_age_min,
         preferred_age_max: discoverySettings.preferred_age_max,
         preferred_genders: discoverySettings.preferred_genders,
         discoverable: discoverySettings.discoverable,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      }, { onConflict: "id" });
 
     setIsSavingDiscovery(false);
 
@@ -241,12 +255,12 @@ export default function SettingsScreen() {
 
     const { error } = await supabase
       .from("user_settings")
-      .update({
+      .upsert({
+        id: userId,
         notify_messages: notificationSettings.notify_messages,
         notify_matches: notificationSettings.notify_matches,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      }, { onConflict: "id" });
 
     setIsSavingNotifications(false);
 
@@ -838,7 +852,15 @@ export default function SettingsScreen() {
 
           <Card variant="plain" padding={0} style={[styles.card, { marginTop: spacing.lg }]}>
             <SettingRow
-              item={{ label: "Sign out", onPress: handleSignOut, danger: true }}
+              item={{ label: "Deactivate account", onPress: isDeactivating ? undefined : () => handleDeactivateAccount(), danger: true }}
+              last={false}
+            />
+            <SettingRow
+              item={{ label: "Delete account", onPress: isDeletingAccount ? undefined : () => handleDeleteAccount(), danger: true }}
+              last={false}
+            />
+            <SettingRow
+              item={{ label: "Sign out", onPress: () => handleSignOut(), danger: true }}
               last
             />
           </Card>
@@ -1003,6 +1025,10 @@ const styles = StyleSheet.create({
   },
   modalStatus: {
     marginTop: spacing.sm,
+  },
+  deactivationStatus: {
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.edge,
   },
   modalActions: {
     marginTop: spacing.lg,
