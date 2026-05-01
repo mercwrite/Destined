@@ -11,7 +11,9 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/app/_layout";
 import { supabase } from "@/utils/supabase";
 import PhotoGrid from "@/components/PhotoGrid";
@@ -79,6 +81,7 @@ function generateUUID(): string {
 export default function ProfileScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
+  const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [photos, setPhotos] = useState<ProfilePhoto[]>([]);
@@ -357,6 +360,21 @@ export default function ProfileScreen() {
             disabled={photoLoading}
           />
 
+          {/* Analytics */}
+          <Pressable
+            style={styles.analyticsBtn}
+            onPress={() => router.push('/analytics')}
+          >
+            <View style={styles.analyticsBtnIcon}>
+              <Ionicons name="bar-chart-outline" size={16} color={colors.accent} />
+            </View>
+            <View style={styles.analyticsBtnText}>
+              <AppText variant="bodyMedium" color={colors.ink}>Analytics</AppText>
+              <AppText variant="caption" color={colors.inkSoft}>Photo stats & likes trend</AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+          </Pressable>
+
           {/* Destination — the hook */}
           <AppText variant="label" color={colors.accent} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
             ✦ Destination — your hook
@@ -565,5 +583,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  analyticsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.rule,
+  },
+  analyticsBtnIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.xs,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  analyticsBtnText: {
+    flex: 1,
+    gap: 2,
   },
 });
