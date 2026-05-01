@@ -1,0 +1,136 @@
+classDiagram
+    direction TB
+
+    class SwipeStack {
+        <<components/SwipeStack.tsx>>
+        +profiles: ProfileCardData[]
+        +onSwipe(direction) void
+        +cardRef: Ref~SwipeCardRef~
+    }
+
+    class SwipeCardRef {
+        <<Interface>>
+        +swipeLeft() void
+        +swipeRight() void
+    }
+
+    class SwipeCard {
+        <<components/SwipeCard.tsx>>
+        +profile: ProfileCardData
+        +onSwipe(direction) void
+        +isTop: boolean
+        +stackIndex: number
+        -photoIndex: number
+        -drawerOpen: boolean
+        -translateX: SharedValue~number~
+        -translateY: SharedValue~number~
+        -drawerProgress: SharedValue~number~
+        +swipeLeft() void
+        +swipeRight() void
+    }
+
+    class ProfileCard {
+        <<components/ProfileCard.tsx>>
+        +profile: ProfileCardData
+        -photoIndex: number
+        -infoOpen: boolean
+        -drawerProgress: SharedValue~number~
+        -openInfo() void
+        -closeInfo() void
+    }
+
+    class PhotoGrid {
+        <<components/PhotoGrid.tsx>>
+        +photos: ProfilePhoto[]
+        +onAddPhoto(slotIndex) void
+        +onDeletePhoto(photo) void
+        +onReorder(photos) void
+        +onDragStart() void
+        +onDragEnd() void
+        +disabled: boolean
+        -containerWidth: number
+        -dragIndex: SharedValue~number~
+        -translateX: SharedValue~number~
+        -translateY: SharedValue~number~
+        -finishDrag(from, to) void
+        -getSlotFromPixel(x, y) number
+    }
+
+    class PhotoGridItem {
+        <<components/PhotoGridItem.tsx>>
+        +photo: ProfilePhoto | null
+        +cellSize: number
+        +onAdd() void
+        +onDelete(photo) void
+        +isBeingDragged: boolean
+        +translateX: SharedValue~number~
+        +translateY: SharedValue~number~
+    }
+
+    class MatchModal {
+        <<components/MatchModal.tsx>>
+        +matchedProfile: ProfileCardData
+        +currentUserProfile: ProfileCardData | null
+        +onKeepSwiping() void
+        -opacity: SharedValue~number~
+        -scale: SharedValue~number~
+    }
+
+    class ActionBar {
+        <<components/ActionBar.tsx>>
+        +onUndo() void
+        +onNope() void
+        +onLike() void
+        +onStar() void
+    }
+
+    class ScreenHeader {
+        <<components/ScreenHeader.tsx>>
+        +eyebrow: string
+        +title: string
+        +trailing: ReactNode
+    }
+
+    class AppText {
+        <<components/Text.tsx>>
+        +variant: display|h1|h2|h3|body|bodyMedium|bodySmall|label|caption
+        +color: string
+        +italic: boolean
+        +align: string
+    }
+
+    class Button {
+        <<components/Button.tsx>>
+        +label: string
+        +variant: primary|secondary|ghost|dark
+        +onPress() void
+        +loading: boolean
+        +disabled: boolean
+        +iconLeft: ReactNode
+        +iconRight: ReactNode
+    }
+
+    class Card {
+        <<components/Card.tsx>>
+        +variant: plain|warm|flat
+        +padding: number
+    }
+
+    class Chip {
+        <<components/Chip.tsx>>
+        +label: string
+        +selected: boolean
+        +onPress() void
+        +size: sm|md
+    }
+
+    SwipeStack --> SwipeCard : renders up to 3
+    SwipeCard ..|> SwipeCardRef : implements via forwardRef
+    SwipeCard --> ProfileCard : wraps for display
+    PhotoGrid *-- PhotoGridItem : renders 9 slots
+    MatchModal --> Button : uses
+    MatchModal --> AppText : uses
+    ActionBar --> AppText : uses
+    ScreenHeader --> AppText : uses
+    Button --> AppText : uses
+    Chip --> AppText : uses

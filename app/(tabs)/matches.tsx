@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   Image,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/app/_layout';
 import { supabase } from '@/utils/supabase';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -164,7 +164,7 @@ export default function MatchesScreen() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={{ flex: 1 }}>
+      <SafeAreaView style={{ flex: 1 }}>
         <ScreenHeader eyebrow="Your trips" title="Matches" />
 
         {loading ? (

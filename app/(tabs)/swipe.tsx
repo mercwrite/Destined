@@ -305,7 +305,7 @@ export default function SwipeScreen() {
   // ── Mobile layout ───────────────────────────────────────────────────────────
 
   return (
-    <GestureHandlerRootView style={mobileStyles.root}>
+    <View style={mobileStyles.root}>
       <SafeAreaView style={mobileStyles.safe}>
         <ScreenHeader
           eyebrow="Today's stack"
@@ -349,13 +349,13 @@ export default function SwipeScreen() {
           </View>
         ) : (
           <>
-            <View style={mobileStyles.stackArea}>
+            <GestureHandlerRootView style={mobileStyles.stackArea}>
               <SwipeStack
                 profiles={allProfiles}
                 onSwipe={handleSwipe}
                 cardRef={topCardRef}
               />
-            </View>
+            </GestureHandlerRootView>
             <ActionBar
               onUndo={() => {}}
               onNope={() => handleButtonSwipe('left')}
@@ -373,7 +373,7 @@ export default function SwipeScreen() {
           onKeepSwiping={clearMatch}
         />
       )}
-    </GestureHandlerRootView>
+    </View>
   );
 }
 
@@ -494,7 +494,7 @@ const mobileStyles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.edge,
     paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.xl,
   },
   centered: {
     flex: 1,

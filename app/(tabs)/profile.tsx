@@ -11,10 +11,12 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/app/_layout";
 import { supabase } from "@/utils/supabase";
 import PhotoGrid from "@/components/PhotoGrid";
-import { ScreenHeader } from "@/components/ScreenHeader";
 import { AppText } from "@/components/Text";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -78,6 +80,7 @@ function generateUUID(): string {
 export default function ProfileScreen() {
   const { session } = useAuth();
   const userId = session?.user.id;
+  const router = useRouter();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [photos, setPhotos] = useState<ProfilePhoto[]>([]);
@@ -318,15 +321,25 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <GestureHandlerRootView style={styles.root}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScreenHeader
-          eyebrow="Your profile"
-          title={form.name || "Edit profile"}
-          trailing={
-            saving ? <ActivityIndicator size="small" color={colors.accent} /> : null
-          }
-        />
+        <View style={styles.inlineHeader}>
+          <View style={styles.headerSide} />
+          <AppText variant="h3" color={colors.ink}>
+            {form.name || "Edit profile"}
+          </AppText>
+          <View style={styles.headerSide}>
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <Pressable onPress={handleSave} disabled={!hasChanges} hitSlop={12}>
+                <AppText variant="bodyMedium" color={hasChanges ? colors.accent : colors.inkFaint}>
+                  Save
+                </AppText>
+              </Pressable>
+            )}
+          </View>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -355,6 +368,21 @@ export default function ProfileScreen() {
             onDragEnd={() => setScrollEnabled(true)}
             disabled={photoLoading}
           />
+
+          {/* Analytics */}
+          <Pressable
+            style={styles.analyticsBtn}
+            onPress={() => router.push('/analytics')}
+          >
+            <View style={styles.analyticsBtnIcon}>
+              <Ionicons name="bar-chart-outline" size={16} color={colors.accent} />
+            </View>
+            <View style={styles.analyticsBtnText}>
+              <AppText variant="bodyMedium" color={colors.ink}>Analytics</AppText>
+              <AppText variant="caption" color={colors.inkSoft}>Photo stats & likes trend</AppText>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.inkFaint} />
+          </Pressable>
 
           {/* Destination — the hook */}
           <AppText variant="label" color={colors.accent} style={[styles.sectionLabel, { marginTop: spacing.xl }]}>
@@ -494,7 +522,7 @@ export default function ProfileScreen() {
           <View style={{ height: spacing.xxl }} />
         </ScrollView>
       </SafeAreaView>
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -519,6 +547,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderLeftWidth: 3,
     borderLeftColor: colors.danger,
+  },
+  inlineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.edge,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.rule,
+    backgroundColor: colors.bg,
+  },
+  headerSide: {
+    minWidth: 48,
+    alignItems: "flex-end",
   },
   sectionLabel: { marginBottom: spacing.sm },
   divider: { height: 1, backgroundColor: colors.rule, marginVertical: spacing.md },
@@ -564,5 +606,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  analyticsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.rule,
+  },
+  analyticsBtnIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.xs,
+    backgroundColor: colors.accentSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  analyticsBtnText: {
+    flex: 1,
+    gap: 2,
   },
 });

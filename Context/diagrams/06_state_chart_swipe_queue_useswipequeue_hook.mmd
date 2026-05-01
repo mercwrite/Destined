@@ -1,0 +1,28 @@
+stateDiagram-v2
+    [*] --> IDLE_LOADING : hook mounts with userId
+
+    IDLE_LOADING --> DISPLAYING : fetchProfiles() returns profiles
+    IDLE_LOADING --> EMPTY : fetchProfiles() returns empty
+    IDLE_LOADING --> ERROR : fetchProfiles() throws
+
+    state DISPLAYING {
+        [*] --> ShowingCard
+        ShowingCard --> Swiping : user swipes or button press
+        Swiping --> ShowingCard : queue advances, no match
+        Swiping --> MATCHED_OVERLAY : record_swipe returns matchId
+        Swiping --> [*] : queue depletes
+    }
+
+    DISPLAYING --> BackgroundRefill : queue at or below REFILL_THRESHOLD
+    BackgroundRefill --> DISPLAYING : new profiles appended
+
+    note right of BackgroundRefill
+        Triggered when queue.length is 5 or fewer.
+        Deduplicates and appends new profiles.
+    end note
+
+    MATCHED_OVERLAY --> DISPLAYING : clearMatch called
+    MATCHED_OVERLAY --> EMPTY : clearMatch + queue depleted
+
+    EMPTY --> IDLE_LOADING : retry called
+    ERROR --> IDLE_LOADING : retry called

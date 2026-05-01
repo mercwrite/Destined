@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -46,3 +47,5 @@ app-example
 .supabase/
 supabase/.branches
 supabase/.temp
+
+.superpowers

@@ -2,6 +2,7 @@ import { StyleSheet, TouchableOpacity, Alert, View, Platform, Pressable } from "
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, SharedValue } from "react-native-reanimated";
+import { colors, radii } from "../theme";
 
 export type ProfilePhoto = {
   id: string;
@@ -114,23 +115,23 @@ export default function PhotoGridItem({
 
 const styles = StyleSheet.create({
   emptySlot: {
-    backgroundColor: "#F0F0F0",
-    borderRadius: 10,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radii.sm,
     borderWidth: 1.5,
-    borderColor: "#D0D0D0",
+    borderColor: colors.accent,
     borderStyle: "dashed",
     alignItems: "center",
     justifyContent: "center",
   },
   occupiedSlot: {
-    borderRadius: 10,
+    borderRadius: radii.sm,
     overflow: "visible",
-    backgroundColor: "#E0E0E0",
+    backgroundColor: colors.surfaceSoft,
   },
   photo: {
     width: "100%",
     height: "100%",
-    borderRadius: 10,
+    borderRadius: radii.sm,
   },
   deleteButton: {
     position: "absolute",

@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#E91E63",
+    color: "#4291db",
     letterSpacing: 0.5,
   },
 });

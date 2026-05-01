@@ -110,6 +110,7 @@ export default function SettingsScreen() {
           preferred_age_min: 18,
           preferred_age_max: 99,
           preferred_genders: [],
+          discoverable: true,
         });
       }
 
@@ -456,6 +457,7 @@ export default function SettingsScreen() {
   const dangerItems: SettingItem[] = [
     { label: "Disable account", onPress: handleDisableAccount, danger: true },
     { label: "Delete account", onPress: handleDeleteAccount, danger: true },
+    { label: "Sign out", onPress: handleSignOut, danger: true },
   ];
 
   return (
@@ -850,20 +852,6 @@ export default function SettingsScreen() {
             ))}
           </Card>
 
-          <Card variant="plain" padding={0} style={[styles.card, { marginTop: spacing.lg }]}>
-            <SettingRow
-              item={{ label: "Deactivate account", onPress: isDeactivating ? undefined : () => handleDeactivateAccount(), danger: true }}
-              last={false}
-            />
-            <SettingRow
-              item={{ label: "Delete account", onPress: isDeletingAccount ? undefined : () => handleDeleteAccount(), danger: true }}
-              last={false}
-            />
-            <SettingRow
-              item={{ label: "Sign out", onPress: () => handleSignOut(), danger: true }}
-              last
-            />
-          </Card>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -1025,10 +1013,6 @@ const styles = StyleSheet.create({
   },
   modalStatus: {
     marginTop: spacing.sm,
-  },
-  deactivationStatus: {
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.edge,
   },
   modalActions: {
     marginTop: spacing.lg,

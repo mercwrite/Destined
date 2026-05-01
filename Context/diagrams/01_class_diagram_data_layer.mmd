@@ -1,0 +1,132 @@
+classDiagram
+    direction TB
+
+    class ProfileCardData {
+        <<TypeScript Type>>
+        +id: string
+        +name: string | null
+        +date_of_birth: string | null
+        +bio: string | null
+        +location_city: string | null
+        +gender: string | null
+        +destination: string | null
+        +hobbies: string[] | null
+        +relationship_type: string | null
+        +photos: ProfilePhoto[]
+    }
+
+    class ProfilePhoto {
+        <<TypeScript Type>>
+        +id: string
+        +profile_id: string
+        +url: string
+        +display_order: number
+        +impressions: number
+        +swipe_left: number
+        +swipe_right: number
+    }
+
+    class profiles {
+        <<DB Table>>
+        +id: uuid PK
+        +name: text
+        +date_of_birth: date
+        +gender: text
+        +location_city: text
+        +location_lat: float8
+        +location_lng: float8
+        +destination: text
+        +bio: text
+        +hobbies: text[]
+        +relationship_type: text
+        +is_active: bool
+        +is_discoverable: bool
+        +created_at: timestamptz
+        +updated_at: timestamptz
+    }
+
+    class profile_photos {
+        <<DB Table>>
+        +id: uuid PK
+        +profile_id: uuid FK
+        +url: text
+        +display_order: int
+        +impressions: int
+        +swipe_left: int
+        +swipe_right: int
+        +created_at: timestamptz
+    }
+
+    class user_settings {
+        <<DB Table>>
+        +id: uuid PK
+        +preferred_distance_km: int
+        +preferred_genders: text[]
+        +preferred_age_min: int
+        +preferred_age_max: int
+        +notify_messages: bool
+        +notify_matches: bool
+        +discoverable: bool
+        +is_active: bool
+        +two_fa_enabled: bool
+        +updated_at: timestamptz
+    }
+
+    class swipes {
+        <<DB Table>>
+        +id: uuid PK
+        +swiper_id: uuid FK
+        +swiped_id: uuid FK
+        +direction: left or right
+        +created_at: timestamptz
+    }
+
+    class matches {
+        <<DB Table>>
+        +id: uuid PK
+        +user1_id: uuid FK
+        +user2_id: uuid FK
+        +starred_by_user1: bool
+        +starred_by_user2: bool
+        +created_at: timestamptz
+    }
+
+    class messages {
+        <<DB Table>>
+        +id: uuid PK
+        +match_id: uuid FK
+        +sender_id: uuid FK
+        +content: text
+        +created_at: timestamptz
+        +read_at: timestamptz
+    }
+
+    class blocked_users {
+        <<DB Table>>
+        +id: uuid PK
+        +blocker_id: uuid FK
+        +blocked_id: uuid FK
+        +created_at: timestamptz
+    }
+
+    class SupabaseRPCs {
+        <<DB Functions>>
+        +record_swipe(swiped_id, direction, photo_id) uuid
+        +delete_account() void
+    }
+
+    ProfileCardData "1" *-- "many" ProfilePhoto : photos[]
+    ProfileCardData ..> profiles : maps to
+    ProfilePhoto ..> profile_photos : maps to
+
+    profiles "1" *-- "many" profile_photos : profile_id
+    profiles "1" *-- "1" user_settings : id
+    profiles "1" *-- "many" swipes : swiper_id / swiped_id
+    profiles "1" *-- "many" matches : user1_id / user2_id
+    profiles "1" *-- "many" blocked_users : blocker_id / blocked_id
+    matches "1" *-- "many" messages : match_id
+    profiles "1" *-- "many" messages : sender_id
+
+    SupabaseRPCs ..> swipes : inserts
+    SupabaseRPCs ..> matches : inserts on mutual like
+    SupabaseRPCs ..> profile_photos : increments counters

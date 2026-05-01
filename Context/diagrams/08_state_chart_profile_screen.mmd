@@ -1,0 +1,49 @@
+stateDiagram-v2
+    [*] --> LOADING : screen mounts
+
+    LOADING --> VIEWING : loadData() resolves
+    LOADING --> VIEWING_WITH_ERROR : loadData() fails
+
+    note right of VIEWING
+        form matches profile snapshot.
+        hasChanges is false.
+        Save button is disabled.
+    end note
+
+    VIEWING --> DIRTY : user edits any field
+    VIEWING --> PHOTO_UPLOADING : user taps empty photo slot
+    VIEWING --> PHOTO_DELETING : user taps delete on photo
+    VIEWING --> PHOTO_REORDERING : user drags to reorder
+
+    note right of DIRTY
+        form differs from profile snapshot.
+        hasChanges is true.
+        Save button is enabled.
+    end note
+
+    DIRTY --> SAVING : tap Save Changes
+    DIRTY --> VIEWING : edits reverted to match snapshot
+
+    state SAVING {
+        [*] --> Uploading
+        Uploading --> SaveSuccess : profiles.update() resolves
+        Uploading --> SaveError : update fails
+        SaveSuccess --> [*]
+        SaveError --> [*]
+    }
+
+    SAVING --> VIEWING : save success, profile snapshot updated
+    SAVING --> DIRTY : save error, user can retry
+
+    state PHOTO_UPLOADING {
+        [*] --> PickerOpen
+        PickerOpen --> Uploading : image selected
+        PickerOpen --> [*] : picker cancelled
+        Uploading --> [*] : storage.upload + insert resolves
+        Uploading --> PhotoError : error
+        PhotoError --> [*]
+    }
+
+    PHOTO_UPLOADING --> VIEWING : photo added
+    PHOTO_DELETING --> VIEWING : photo removed, display_order resequenced
+    PHOTO_REORDERING --> VIEWING : onReorder updates display_order
