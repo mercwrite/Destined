@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -9,8 +8,10 @@ import {
   Pressable,
   SafeAreaView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/app/_layout';
 import { supabase } from '@/utils/supabase';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -19,9 +20,13 @@ import MatchModal from '@/components/MatchModal';
 import ProfileCard, { type ProfileCardData } from '@/components/ProfileCard';
 import { colors, radii, shadows, spacing } from '@/theme';
 
-const { height: SCREEN_H } = Dimensions.get('window');
-const NUM_COLS = Platform.OS === 'web' ? 5 : 2;
-const COL_GAP = Platform.OS === 'web' ? spacing.sm : spacing.sm;
+const IS_WEB = Platform.OS === 'web';
+const NUM_COLS = IS_WEB ? 5 : 2;
+const GRID_PAD = IS_WEB ? spacing.edge : spacing.md;
+const GAP = spacing.sm;
+// Rows to keep visible on mobile without scrolling (header + safearea + tabbar ≈ 200px)
+const MOBILE_ROWS = 4;
+const MOBILE_CHROME = 200;
 
 function computeAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -40,6 +45,14 @@ const PHOTO_SELECT =
 export default function LikesScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
+  const { width: winW, height: winH } = useWindowDimensions();
+
+  // Fixed card dimensions — always constant regardless of list length
+  const effectiveW = IS_WEB ? Math.min(winW, 1100) : winW;
+  const cardW = Math.floor((effectiveW - 2 * GRID_PAD - (NUM_COLS - 1) * GAP) / NUM_COLS);
+  const cardH = IS_WEB
+    ? cardW  // square cards on web
+    : Math.floor((winH - MOBILE_CHROME - (MOBILE_ROWS - 1) * GAP - GRID_PAD) / MOBILE_ROWS);
 
   const [likers, setLikers] = useState<ProfileCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,37 +182,46 @@ export default function LikesScreen() {
             data={likers}
             keyExtractor={(item) => item.id}
             numColumns={NUM_COLS}
-            key={NUM_COLS}
-            contentContainerStyle={styles.grid}
+            key={`${NUM_COLS}-${cardW}`}
+            contentContainerStyle={[styles.grid, { paddingHorizontal: GRID_PAD }]}
             style={styles.gridList}
-            columnWrapperStyle={{ gap: COL_GAP }}
-            ItemSeparatorComponent={() => <View style={{ height: COL_GAP }} />}
+            columnWrapperStyle={{ gap: GAP }}
+            ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
             renderItem={({ item }) => {
               const age = computeAge(item.date_of_birth);
               const photoUrl = item.photos[0]?.url ?? null;
               return (
-                // FR-MATCH-002: tap to expand full profile
                 <Pressable
-                  style={({ pressed }) => [styles.card, shadows.md, pressed && { opacity: 0.88 }]}
+                  style={({ pressed }) => [
+                    { width: cardW, height: cardH, borderRadius: radii.md, overflow: 'hidden', ...shadows.sm },
+                    pressed && { opacity: 0.88 },
+                  ]}
                   onPress={() => setSelected(item)}
                 >
                   {photoUrl ? (
-                    <Image source={{ uri: photoUrl }} style={styles.photo} resizeMode="cover" />
+                    <Image source={{ uri: photoUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
                   ) : (
-                    <View style={[styles.photo, styles.photoPlaceholder]}>
-                      <AppText style={{ fontSize: 40, color: colors.inkFaint }}>?</AppText>
+                    <View style={[StyleSheet.absoluteFill, styles.photoPlaceholder]}>
+                      <AppText style={{ fontSize: 32, color: colors.inkFaint }}>?</AppText>
                     </View>
                   )}
-                  <View style={styles.cardInfo}>
-                    <AppText variant="bodyMedium" color={colors.ink} numberOfLines={1}>
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.68)']}
+                    style={[StyleSheet.absoluteFill, styles.cardOverlay]}
+                  >
+                    <AppText
+                      variant="bodySmall"
+                      numberOfLines={1}
+                      style={styles.cardName}
+                    >
                       {item.name ?? 'Someone'}{age !== null ? `, ${age}` : ''}
                     </AppText>
                     {item.destination ? (
-                      <AppText variant="caption" color={colors.accent} numberOfLines={1}>
+                      <AppText variant="caption" numberOfLines={1} style={styles.cardDest}>
                         ✈ {item.destination}
                       </AppText>
                     ) : null}
-                  </View>
+                  </LinearGradient>
                 </Pressable>
               );
             }}
@@ -269,44 +291,41 @@ const styles = StyleSheet.create({
   gridList: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: Platform.OS === 'web' ? 1100 : undefined,
+    maxWidth: IS_WEB ? 1100 : undefined,
   },
   grid: {
-    paddingHorizontal: spacing.edge,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xxl,
-  },
-  card: {
-    flex: 1,
-    borderRadius: radii.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.surface,
-  },
-  photo: {
-    width: '100%',
-    aspectRatio: 0.85,
   },
   photoPlaceholder: {
     backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardInfo: {
+  cardOverlay: {
+    justifyContent: 'flex-end',
     padding: spacing.sm,
     gap: 2,
+  },
+  cardName: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  cardDest: {
+    color: 'rgba(255,255,255,0.82)',
   },
   // Profile expand sheet
   modalBackdrop: {
     flex: 1,
-    justifyContent: Platform.OS === 'web' ? 'center' : 'flex-end',
-    alignItems: Platform.OS === 'web' ? 'center' : 'stretch',
+    justifyContent: IS_WEB ? 'center' : 'flex-end',
+    alignItems: IS_WEB ? 'center' : 'stretch',
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
-    height: SCREEN_H * 0.88,
-    width: Platform.OS === 'web' ? 400 : undefined,
+    height: '88%',
+    width: IS_WEB ? 400 : undefined,
     backgroundColor: colors.bg,
-    borderRadius: Platform.OS === 'web' ? radii.xl : undefined,
+    borderRadius: IS_WEB ? radii.xl : undefined,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
     paddingBottom: spacing.xxl,
