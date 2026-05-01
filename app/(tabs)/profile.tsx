@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/app/_layout";
 import { supabase } from "@/utils/supabase";
 import PhotoGrid from "@/components/PhotoGrid";
-import { ScreenHeader } from "@/components/ScreenHeader";
 import { AppText } from "@/components/Text";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
@@ -324,13 +323,23 @@ export default function ProfileScreen() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaView style={{ flex: 1 }}>
-        <ScreenHeader
-          eyebrow="Your profile"
-          title={form.name || "Edit profile"}
-          trailing={
-            saving ? <ActivityIndicator size="small" color={colors.accent} /> : null
-          }
-        />
+        <View style={styles.inlineHeader}>
+          <View style={styles.headerSide} />
+          <AppText variant="h3" color={colors.ink}>
+            {form.name || "Edit profile"}
+          </AppText>
+          <View style={styles.headerSide}>
+            {saving ? (
+              <ActivityIndicator size="small" color={colors.accent} />
+            ) : (
+              <Pressable onPress={handleSave} disabled={!hasChanges} hitSlop={12}>
+                <AppText variant="bodyMedium" color={hasChanges ? colors.accent : colors.inkFaint}>
+                  Save
+                </AppText>
+              </Pressable>
+            )}
+          </View>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -538,6 +547,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderLeftWidth: 3,
     borderLeftColor: colors.danger,
+  },
+  inlineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.edge,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.rule,
+    backgroundColor: colors.bg,
+  },
+  headerSide: {
+    minWidth: 48,
+    alignItems: "flex-end",
   },
   sectionLabel: { marginBottom: spacing.sm },
   divider: { height: 1, backgroundColor: colors.rule, marginVertical: spacing.md },
