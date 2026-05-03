@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   errorBanner: {
-    backgroundColor: "#fff0f0",
+    backgroundColor: colors.surfaceWarm,
     borderRadius: radii.sm,
     padding: spacing.md,
     marginBottom: spacing.md,
