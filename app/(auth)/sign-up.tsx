@@ -261,6 +261,13 @@ export default function SignUpScreen() {
   if (step === 7) {
     return (
       <SafeAreaView style={styles.root}>
+        {error ? (
+          <View style={[styles.errorBanner, { margin: spacing.edge }]}>
+            <AppText variant="bodySmall" color={colors.danger}>
+              {error}
+            </AppText>
+          </View>
+        ) : null}
         <View style={styles.successContainer}>
           <Ionicons name="mail-outline" size={72} color={colors.accent} />
           <AppText variant="h1" color={colors.ink} style={styles.successTitle}>
