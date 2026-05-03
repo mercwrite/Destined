@@ -48,4 +48,4 @@ app-example
 supabase/.branches
 supabase/.temp
 
-.superpowers
+.superpowers.worktrees/
