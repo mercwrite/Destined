@@ -33,7 +33,10 @@ function AuthGuard({ session, loading }: { session: Session | null; loading: boo
     if (!session && !inAuthGroup) {
       router.replace("/(auth)/welcome");
     } else if (session && inAuthGroup) {
-      router.replace("/(tabs)/swipe");
+      const onSignUpWizard = segments[1] === "sign-up";
+      if (!onSignUpWizard) {
+        router.replace("/(tabs)/swipe");
+      }
     }
   }, [session, loading, segments]);
 

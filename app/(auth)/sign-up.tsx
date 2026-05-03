@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -102,6 +102,12 @@ export default function SignUpScreen() {
   const yearRef = useRef<TextInput>(null);
   const emailTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => {
+      if (emailTimer.current) clearTimeout(emailTimer.current);
+    };
+  }, []);
+
   // ── Computed ────────────────────────────────────────────────────────────────
 
   const step1Valid =
@@ -191,7 +197,8 @@ export default function SignUpScreen() {
 
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        id: userId,
         name: name.trim(),
         date_of_birth: dob,
         gender,
@@ -201,8 +208,7 @@ export default function SignUpScreen() {
         bio: bio.trim() || null,
         hobbies: hobbies.length > 0 ? hobbies : null,
         updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+      });
 
     if (profileError) {
       setError(profileError.message);
@@ -210,6 +216,7 @@ export default function SignUpScreen() {
       return;
     }
 
+    let photoFailCount = 0;
     for (let i = 0; i < photos.length; i++) {
       try {
         const photo = photos[i];
@@ -221,7 +228,7 @@ export default function SignUpScreen() {
           .upload(fileName, blob, {
             contentType: photo.mimeType ?? "image/jpeg",
           });
-        if (uploadErr) continue;
+        if (uploadErr) { photoFailCount++; continue; }
         const { data: urlData } = supabase.storage
           .from("photos")
           .getPublicUrl(fileName);
@@ -234,11 +241,14 @@ export default function SignUpScreen() {
           swipe_right: 0,
         });
       } catch {
-        // non-fatal — photos can be added later in the profile tab
+        photoFailCount++;
       }
     }
 
     setSubmitting(false);
+    if (photoFailCount > 0) {
+      setError(`${photoFailCount} photo(s) failed to upload. You can add them later in your profile.`);
+    }
     setStep(7);
   }
 
