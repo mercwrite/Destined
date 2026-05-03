@@ -525,6 +525,78 @@ export default function SignUpScreen() {
             </>
           )}
 
+          {/* ── Step 3 — About You & Looking For ─────────────────────────── */}
+          {step === 3 && (
+            <>
+              <AppText variant="h1" color={colors.ink} style={styles.stepTitle}>
+                About you
+              </AppText>
+
+              <AppText variant="label" color={colors.inkSoft} style={styles.fieldLabel}>
+                I am a…
+              </AppText>
+              <View style={styles.chipRow}>
+                {GENDER_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt}
+                    label={opt}
+                    selected={gender === opt}
+                    onPress={() => setGender((prev) => (prev === opt ? "" : opt))}
+                  />
+                ))}
+              </View>
+
+              <AppText
+                variant="label"
+                color={colors.inkSoft}
+                style={[styles.fieldLabel, { marginTop: spacing.xl }]}
+              >
+                Interested in…
+              </AppText>
+              <View style={styles.chipRow}>
+                {INTERESTED_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt}
+                    label={opt}
+                    selected={interestedIn === opt}
+                    onPress={() =>
+                      setInterestedIn((prev) => (prev === opt ? "" : opt))
+                    }
+                  />
+                ))}
+              </View>
+
+              <AppText
+                variant="label"
+                color={colors.inkSoft}
+                style={[styles.fieldLabel, { marginTop: spacing.xl }]}
+              >
+                Looking for…
+              </AppText>
+              <View style={styles.chipRow}>
+                {RELATIONSHIP_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt}
+                    label={opt}
+                    selected={relationshipType === opt}
+                    onPress={() =>
+                      setRelationshipType((prev) => (prev === opt ? "" : opt))
+                    }
+                  />
+                ))}
+              </View>
+
+              <View style={styles.buttonRow}>
+                <Button
+                  label="Next"
+                  variant="primary"
+                  onPress={() => setStep(4)}
+                  disabled={!gender || !interestedIn || !relationshipType}
+                />
+              </View>
+            </>
+          )}
+
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       </SafeAreaView>
