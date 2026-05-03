@@ -76,15 +76,15 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  hero: { position: "absolute", top: 0, left: 0, right: 0, height: "62%" },
-  heroFade: { position: "absolute", left: 0, right: 0, top: 0, height: "62%" },
-  safe: { flex: 1, justifyContent: "space-between" },
+  hero: { position: "absolute", top: 0, left: 0, right: 0, height: "62%", zIndex: 0 },
+  heroFade: { position: "absolute", left: 0, right: 0, top: 0, height: "62%", zIndex: 0 },
+  safe: { flex: 1, justifyContent: "space-between", zIndex: 1 },
   topBar: {
     flexDirection: "row",
     justifyContent: "flex-end",
     paddingHorizontal: spacing.edge,
     paddingTop: spacing.md,
   },
-  bottom: { padding: spacing.edge, paddingBottom: spacing.xxl },
+  bottom: { padding: spacing.edge, paddingBottom: spacing.xxl, backgroundColor: colors.bg },
   signInRow: { flexDirection: "row", justifyContent: "center" },
 });
