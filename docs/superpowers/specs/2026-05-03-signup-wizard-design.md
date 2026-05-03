@@ -32,6 +32,8 @@ email: string
 password: string
 photos: Array<{ uri: string; mimeType?: string; fileExt: string }>  // local URIs only
 relationshipType: string
+gender: string            // "Man" | "Woman"
+interestedIn: string      // "Men" | "Women" | "Any"
 destination: string       // skippable
 bio: string               // skippable
 hobbies: string[]         // skippable
@@ -68,11 +70,13 @@ hobbyInput: string        // controlled input for custom hobby entry
 - **UI:** 3×3 slot grid; empty slots open `ImagePicker`, occupied slots show photo with × to remove; local URIs stored in state (no upload yet)
 - **"Next" gated on:** `photos.length >= 1`
 
-### Step 3 — Relationship Type (required)
+### Step 3 — About You & Looking For (required)
 - **Header:** back chevron, "3 / 6"
-- **Title:** "What are you looking for?"
-- **UI:** `Chip` selector — Short-term / Long-term / Casual / Open (single-select)
-- **"Next" gated on:** `relationshipType` non-empty
+- **Sections (top to bottom):**
+  1. **"I am a…"** — `Chip` selector: Man / Woman (single-select)
+  2. **"Interested in…"** — `Chip` selector: Men / Women / Any (single-select)
+  3. **"Looking for…"** — `Chip` selector: Short-term / Long-term / Casual / Open (single-select)
+- **"Next" gated on:** all three selections made (`gender`, `interestedIn`, `relationshipType` all non-empty)
 
 ### Step 4 — Destination (skippable)
 - **Header:** back chevron, "Skip" top-right (advances to step 5, preserving any typed value in state), "4 / 6"
@@ -111,6 +115,7 @@ hobbyInput: string        // controlled input for custom hobby entry
 3. Build ISO DOB: `${dobYear}-${dobMonth.padStart(2,'0')}-${dobDay.padStart(2,'0')}`
 4. supabase.from("profiles").update({
      name, date_of_birth, relationship_type,
+     gender, interested_in: interestedIn,
      destination: destination || null,
      bio: bio || null,
      hobbies: hobbies.length > 0 ? hobbies : null,
@@ -138,7 +143,15 @@ Photo upload errors are non-fatal — log them but don't block the user from rea
 - `emailAvailable === false` → red "Email address is taken!" below the field; Next button disabled
 - `emailAvailable === null` → no inline message (user hasn't typed a valid-format email yet)
 
-### Supabase migration
+### Supabase migrations
+
+**Migration 1 — add `interested_in` column to `profiles`**
+
+```sql
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS interested_in TEXT;
+```
+
+**Migration 2 — `check_email_available` RPC**
 
 ```sql
 CREATE OR REPLACE FUNCTION public.check_email_available(check_email TEXT)
