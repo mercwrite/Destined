@@ -597,6 +597,124 @@ export default function SignUpScreen() {
             </>
           )}
 
+          {/* ── Step 4 — Destination ─────────────────────────────────────── */}
+          {step === 4 && (
+            <>
+              <AppText variant="h1" color={colors.ink} style={styles.stepTitle}>
+                Where do you want to go?
+              </AppText>
+              <AppText variant="body" color={colors.inkSoft} style={styles.stepSubtitle}>
+                The hook that attracts matches with the same travel dreams
+              </AppText>
+              <TextInput
+                value={destination}
+                onChangeText={setDestination}
+                placeholder="e.g. Lisbon, Tokyo, Joshua Tree"
+                placeholderTextColor={colors.inkFaint}
+                style={styles.input}
+              />
+              <View style={styles.buttonRow}>
+                <Button
+                  label="Next"
+                  variant="primary"
+                  onPress={() => setStep(5)}
+                />
+              </View>
+            </>
+          )}
+
+          {/* ── Step 5 — Bio ─────────────────────────────────────────────── */}
+          {step === 5 && (
+            <>
+              <AppText variant="h1" color={colors.ink} style={styles.stepTitle}>
+                Tell us about yourself
+              </AppText>
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                placeholder="A few sentences about you…"
+                placeholderTextColor={colors.inkFaint}
+                multiline
+                maxLength={300}
+                textAlignVertical="top"
+                style={[styles.input, styles.bioInput]}
+              />
+              <AppText
+                variant="caption"
+                color={colors.inkFaint}
+                align="right"
+                style={{ marginBottom: spacing.md }}
+              >
+                {bio.length}/300
+              </AppText>
+              <View style={styles.buttonRow}>
+                <Button
+                  label="Next"
+                  variant="primary"
+                  onPress={() => setStep(6)}
+                />
+              </View>
+            </>
+          )}
+
+          {/* ── Step 6 — Hobbies ─────────────────────────────────────────── */}
+          {step === 6 && (
+            <>
+              <AppText variant="h1" color={colors.ink} style={styles.stepTitle}>
+                What are you into?
+              </AppText>
+              <View style={styles.chipRow}>
+                {PRESET_HOBBIES.map((h) => (
+                  <Chip
+                    key={h}
+                    label={h}
+                    selected={hobbies.includes(h)}
+                    onPress={() => toggleHobby(h)}
+                  />
+                ))}
+              </View>
+              <View style={styles.customHobbyRow}>
+                <TextInput
+                  value={hobbyInput}
+                  onChangeText={setHobbyInput}
+                  onSubmitEditing={addCustomHobby}
+                  returnKeyType="done"
+                  placeholder="Add your own…"
+                  placeholderTextColor={colors.inkFaint}
+                  style={styles.customHobbyInput}
+                />
+                <Pressable onPress={addCustomHobby} style={styles.addHobbyBtn}>
+                  <AppText variant="bodyMedium" color={colors.white}>
+                    +
+                  </AppText>
+                </Pressable>
+              </View>
+              {hobbies.filter((h) => !PRESET_HOBBIES.includes(h)).length > 0 && (
+                <View style={[styles.chipRow, { marginTop: spacing.sm }]}>
+                  {hobbies
+                    .filter((h) => !PRESET_HOBBIES.includes(h))
+                    .map((h) => (
+                      <Chip
+                        key={h}
+                        label={`${h} ✕`}
+                        selected
+                        onPress={() => toggleHobby(h)}
+                      />
+                    ))}
+                </View>
+              )}
+              <View style={styles.buttonRow}>
+                <Button
+                  label="Finish"
+                  variant="primary"
+                  onPress={handleFinish}
+                  loading={submitting}
+                  disabled={submitting}
+                />
+              </View>
+            </>
+          )}
+
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       </SafeAreaView>
