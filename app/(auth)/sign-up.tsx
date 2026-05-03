@@ -341,7 +341,137 @@ export default function SignUpScreen() {
             </View>
           ) : null}
 
-          {/* Step content added in Tasks 3–6 */}
+          {/* ── Step 1 — Account Details ──────────────────────────────────── */}
+          {step === 1 && (
+            <>
+              <AppText variant="h1" color={colors.ink} style={styles.stepTitle}>
+                Let's get started
+              </AppText>
+
+              <AppText variant="label" color={colors.inkSoft} style={styles.fieldLabel}>
+                Name
+              </AppText>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Your name"
+                placeholderTextColor={colors.inkFaint}
+                autoCapitalize="words"
+                style={styles.input}
+              />
+
+              <AppText variant="label" color={colors.inkSoft} style={styles.fieldLabel}>
+                Date of birth
+              </AppText>
+              <View style={styles.dobRow}>
+                <TextInput
+                  value={dobMonth}
+                  onChangeText={(v) => {
+                    const cleaned = v.replace(/\D/g, "").slice(0, 2);
+                    setDobMonth(cleaned);
+                    if (cleaned.length === 2) dayRef.current?.focus();
+                  }}
+                  placeholder="MM"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  style={[styles.input, styles.dobInput]}
+                />
+                <TextInput
+                  ref={dayRef}
+                  value={dobDay}
+                  onChangeText={(v) => {
+                    const cleaned = v.replace(/\D/g, "").slice(0, 2);
+                    setDobDay(cleaned);
+                    if (cleaned.length === 2) yearRef.current?.focus();
+                  }}
+                  placeholder="DD"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  style={[styles.input, styles.dobInput]}
+                />
+                <TextInput
+                  ref={yearRef}
+                  value={dobYear}
+                  onChangeText={(v) =>
+                    setDobYear(v.replace(/\D/g, "").slice(0, 4))
+                  }
+                  placeholder="YYYY"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  style={[styles.input, styles.dobYearInput]}
+                />
+              </View>
+              {isValidDate(dobYear, dobMonth, dobDay) &&
+                calcAge(dobYear, dobMonth, dobDay) < 18 && (
+                  <AppText
+                    variant="bodySmall"
+                    color={colors.danger}
+                    style={styles.fieldError}
+                  >
+                    You must be 18 or older to join.
+                  </AppText>
+                )}
+
+              <AppText variant="label" color={colors.inkSoft} style={styles.fieldLabel}>
+                Email
+              </AppText>
+              <TextInput
+                value={email}
+                onChangeText={onEmailChange}
+                placeholder="you@example.com"
+                placeholderTextColor={colors.inkFaint}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.input}
+              />
+              {emailAvailable === false && (
+                <AppText
+                  variant="bodySmall"
+                  color={colors.danger}
+                  style={styles.fieldError}
+                >
+                  Email address is taken!
+                </AppText>
+              )}
+
+              <AppText variant="label" color={colors.inkSoft} style={styles.fieldLabel}>
+                Password
+              </AppText>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Min. 6 characters"
+                placeholderTextColor={colors.inkFaint}
+                secureTextEntry
+                style={styles.input}
+              />
+
+              <View style={styles.buttonRow}>
+                <Button
+                  label="Next"
+                  variant="primary"
+                  onPress={() => setStep(2)}
+                  disabled={!step1Valid}
+                />
+              </View>
+
+              <Pressable
+                onPress={() => router.back()}
+                style={styles.signInRow}
+              >
+                <AppText variant="body" color={colors.inkSoft}>
+                  Already have an account?{" "}
+                  <AppText variant="bodyMedium" color={colors.accent}>
+                    Sign in
+                  </AppText>
+                </AppText>
+              </Pressable>
+            </>
+          )}
 
           <View style={{ height: spacing.xl }} />
         </ScrollView>
