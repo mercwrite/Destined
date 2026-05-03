@@ -1,4 +1,5 @@
-import { Image, SafeAreaView, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { AppText } from "@/components/Text";
