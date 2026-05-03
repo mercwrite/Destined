@@ -473,6 +473,58 @@ export default function SignUpScreen() {
             </>
           )}
 
+          {/* ── Step 2 — Photos ──────────────────────────────────────────────── */}
+          {step === 2 && (
+            <>
+              <AppText variant="h1" color={colors.ink} style={styles.stepTitle}>
+                Add your photos
+              </AppText>
+              <AppText variant="body" color={colors.inkSoft} style={styles.stepSubtitle}>
+                At least one required to continue
+              </AppText>
+
+              <View style={styles.photoGrid}>
+                {photoSlots.map((photo, i) =>
+                  photo ? (
+                    <View key={i} style={styles.photoSlot}>
+                      <Image
+                        source={{ uri: photo.uri }}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        style={styles.photoRemoveBtn}
+                        onPress={() => removePhoto(i)}
+                      >
+                        <Ionicons name="close" size={12} color={colors.white} />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Pressable
+                      key={i}
+                      style={styles.photoSlot}
+                      onPress={addPhoto}
+                      disabled={photos.length >= TOTAL_PHOTO_SLOTS}
+                    >
+                      <View style={styles.photoEmptySlot}>
+                        <Ionicons name="add" size={28} color={colors.inkFaint} />
+                      </View>
+                    </Pressable>
+                  )
+                )}
+              </View>
+
+              <View style={styles.buttonRow}>
+                <Button
+                  label="Next"
+                  variant="primary"
+                  onPress={() => setStep(3)}
+                  disabled={photos.length === 0}
+                />
+              </View>
+            </>
+          )}
+
           <View style={{ height: spacing.xl }} />
         </ScrollView>
       </SafeAreaView>
