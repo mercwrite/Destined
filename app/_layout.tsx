@@ -23,7 +23,7 @@ export function useAuth() {
 
 function AuthGuard({ session, loading }: { session: Session | null; loading: boolean }) {
   const router = useRouter();
-  const segments = useSegments();
+  const segments = useSegments() as string[];
 
   useEffect(() => {
     if (loading) return;

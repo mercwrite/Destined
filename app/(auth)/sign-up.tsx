@@ -123,6 +123,7 @@ export default function SignUpScreen() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   function handleBack() {
+    setError(null);
     if (step > 1) setStep(step - 1);
     else router.back();
   }
@@ -211,7 +212,9 @@ export default function SignUpScreen() {
       });
 
     if (profileError) {
-      setError(profileError.message);
+      setError(
+        "Your account was created but we couldn't save your profile. Please sign in and complete your profile from the Settings tab."
+      );
       setSubmitting(false);
       return;
     }
@@ -311,7 +314,7 @@ export default function SignUpScreen() {
           </AppText>
           {canSkip ? (
             <Pressable
-              onPress={step === 6 ? handleFinish : () => setStep(step + 1)}
+              onPress={step === 6 ? handleFinish : () => { setError(null); setStep(step + 1); }}
               hitSlop={12}
               style={[styles.headerSide, styles.headerSideRight]}
               disabled={step === 6 && submitting}
@@ -454,7 +457,7 @@ export default function SignUpScreen() {
                 <Button
                   label="Next"
                   variant="primary"
-                  onPress={() => setStep(2)}
+                  onPress={() => { setError(null); setStep(2); }}
                   disabled={!step1Valid}
                 />
               </View>
@@ -494,7 +497,7 @@ export default function SignUpScreen() {
                       />
                       <Pressable
                         style={styles.photoRemoveBtn}
-                        onPress={() => removePhoto(i)}
+                        onPress={() => removePhoto(photos.indexOf(photo))}
                       >
                         <Ionicons name="close" size={12} color={colors.white} />
                       </Pressable>
@@ -518,7 +521,7 @@ export default function SignUpScreen() {
                 <Button
                   label="Next"
                   variant="primary"
-                  onPress={() => setStep(3)}
+                  onPress={() => { setError(null); setStep(3); }}
                   disabled={photos.length === 0}
                 />
               </View>
@@ -590,7 +593,7 @@ export default function SignUpScreen() {
                 <Button
                   label="Next"
                   variant="primary"
-                  onPress={() => setStep(4)}
+                  onPress={() => { setError(null); setStep(4); }}
                   disabled={!gender || !interestedIn || !relationshipType}
                 />
               </View>
@@ -617,7 +620,7 @@ export default function SignUpScreen() {
                 <Button
                   label="Next"
                   variant="primary"
-                  onPress={() => setStep(5)}
+                  onPress={() => { setError(null); setStep(5); }}
                 />
               </View>
             </>
@@ -651,7 +654,7 @@ export default function SignUpScreen() {
                 <Button
                   label="Next"
                   variant="primary"
-                  onPress={() => setStep(6)}
+                  onPress={() => { setError(null); setStep(6); }}
                 />
               </View>
             </>
