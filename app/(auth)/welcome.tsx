@@ -1,10 +1,10 @@
-import { Image, StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "@/components/Button";
+import { AppText } from "@/components/Text";
+import { colors, spacing } from "@/theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { AppText } from "@/components/Text";
-import { Button } from "@/components/Button";
-import { colors, spacing } from "@/theme";
+import { Image, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function WelcomeScreen() {
   const router = useRouter();

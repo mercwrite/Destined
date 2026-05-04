@@ -1,9 +1,9 @@
 // Button.tsx — primary, secondary, ghost variants with Aurora-soft elevation.
 
-import React from 'react';
-import { Pressable, View, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { colors, radii, shadows, spacing } from '../theme';
 import { AppText } from './Text';
-import { colors, radii, spacing, shadows } from '../theme';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'dark';
 
@@ -30,18 +30,21 @@ export function Button({
   iconLeft,
   iconRight,
 }: ButtonProps) {
+  const [pressed, setPressed] = useState(false);
   const palette = paletteFor(variant);
 
   return (
     <Pressable
       onPress={disabled || loading ? undefined : onPress}
-      style={({ pressed }) => [
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={[
         styles.base,
-        { backgroundColor: palette.bg, borderColor: palette.border, borderWidth: palette.borderWidth },
+        variantStyles[variant],
         variant === 'primary' ? shadows.accent : null,
-        fullWidth ? { alignSelf: 'stretch' } : null,
-        pressed && !disabled ? { transform: [{ scale: 0.98 }], opacity: 0.92 } : null,
-        disabled ? { opacity: 0.5 } : null,
+        fullWidth ? styles.fullWidth : null,
+        pressed && !disabled ? styles.pressed : null,
+        disabled ? styles.disabled : null,
         style,
       ]}
     >
@@ -63,15 +66,24 @@ export function Button({
 function paletteFor(variant: Variant) {
   switch (variant) {
     case 'primary':
-      return { bg: colors.accent, fg: colors.white, border: colors.accent, borderWidth: 0 };
+      return { fg: colors.white };
     case 'secondary':
-      return { bg: colors.accentSoft, fg: colors.accentDeep, border: colors.accentSoft, borderWidth: 0 };
+      return { fg: colors.accentDeep };
     case 'ghost':
-      return { bg: 'transparent', fg: colors.ink, border: colors.ruleStrong, borderWidth: 1 };
+      return { fg: colors.ink };
     case 'dark':
-      return { bg: colors.ink, fg: colors.bg, border: colors.ink, borderWidth: 0 };
+      return { fg: colors.bg };
   }
 }
+
+// StyleSheet.create registers these as numeric IDs, which NativeWind passes
+// through correctly — unlike inline objects inside Pressable style functions.
+const variantStyles = StyleSheet.create({
+  primary: { backgroundColor: colors.accent },
+  secondary: { backgroundColor: colors.accentSoft },
+  ghost: { backgroundColor: 'transparent', borderColor: colors.ruleStrong, borderWidth: 1 },
+  dark: { backgroundColor: colors.ink },
+});
 
 const styles = StyleSheet.create({
   base: {
@@ -81,6 +93,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fullWidth: { alignSelf: 'stretch' },
+  pressed: { transform: [{ scale: 0.98 }], opacity: 0.92 },
+  disabled: { opacity: 0.5 },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
