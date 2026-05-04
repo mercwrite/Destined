@@ -53,7 +53,7 @@ export default function WelcomeScreen() {
 
         <Button
           label="Create account"
-          variant="dark"
+          variant="primary"
           onPress={() => router.push("/(auth)/sign-up")}
         />
         <View style={{ height: spacing.md }} />
