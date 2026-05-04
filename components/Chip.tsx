@@ -1,6 +1,6 @@
 // Chip.tsx — interest tag, hobby pill, etc.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, View, StyleSheet, ViewStyle } from 'react-native';
 import { AppText } from './Text';
 import { colors, radii, spacing } from '../theme';
@@ -14,26 +14,37 @@ interface ChipProps {
 }
 
 export function Chip({ label, selected = false, onPress, size = 'md', style }: ChipProps) {
-  const Container: any = onPress ? Pressable : View;
+  const [pressed, setPressed] = useState(false);
+
+  const chipStyle = [
+    styles.base,
+    size === 'sm' ? styles.sm : styles.md,
+    selected ? styles.selected : styles.unselected,
+    pressed ? styles.pressed : null,
+    style,
+  ];
+
+  if (!onPress) {
+    return (
+      <View style={chipStyle}>
+        <AppText variant="bodySmall" color={selected ? colors.accentDeep : colors.ink} style={styles.label}>
+          {label}
+        </AppText>
+      </View>
+    );
+  }
+
   return (
-    <Container
+    <Pressable
       onPress={onPress}
-      style={({ pressed }: any) => [
-        styles.base,
-        size === 'sm' ? styles.sm : styles.md,
-        selected ? styles.selected : styles.unselected,
-        pressed ? { opacity: 0.85 } : null,
-        style,
-      ]}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={chipStyle}
     >
-      <AppText
-        variant="bodySmall"
-        color={selected ? colors.accentDeep : colors.ink}
-        style={{ fontWeight: '500' }}
-      >
+      <AppText variant="bodySmall" color={selected ? colors.accentDeep : colors.ink} style={styles.label}>
         {label}
       </AppText>
-    </Container>
+    </Pressable>
   );
 }
 
@@ -54,4 +65,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.rule,
   },
+  pressed: { opacity: 0.85 },
+  label: { fontWeight: '500' },
 });

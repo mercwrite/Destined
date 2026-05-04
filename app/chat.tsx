@@ -353,11 +353,17 @@ export default function ChatScreen() {
               <View style={styles.menuHandle} />
 
               <Pressable
-                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [
+                  styles.menuItem,
+                  Platform.OS !== 'web' && { paddingVertical: 22 },
+                  pressed && { opacity: 0.7 },
+                ]}
                 onPress={handleStar}
               >
-                <AppText style={styles.menuItemStar}>{starred ? '★' : '☆'}</AppText>
-                <AppText variant="body" color={colors.ink}>
+                <AppText style={[styles.menuItemStar, Platform.OS !== 'web' && { fontSize: 20, lineHeight: 24 }]}>
+                  {starred ? '★' : '☆'}
+                </AppText>
+                <AppText variant="body" color={colors.ink} style={Platform.OS !== 'web' && { fontSize: 17 }}>
                   {starred ? 'Unstar conversation' : 'Star conversation'}
                 </AppText>
               </Pressable>
@@ -365,28 +371,46 @@ export default function ChatScreen() {
               <View style={styles.menuDivider} />
 
               <Pressable
-                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [
+                  styles.menuItem,
+                  Platform.OS !== 'web' && { paddingVertical: 22 },
+                  pressed && { opacity: 0.7 },
+                ]}
                 onPress={handleUnmatch}
               >
-                <AppText variant="body" color={colors.danger}>Unmatch</AppText>
+                <AppText variant="body" color={colors.danger} style={Platform.OS !== 'web' && { fontSize: 17 }}>
+                  Unmatch
+                </AppText>
               </Pressable>
 
               <View style={styles.menuDivider} />
 
               <Pressable
-                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [
+                  styles.menuItem,
+                  Platform.OS !== 'web' && { paddingVertical: 22 },
+                  pressed && { opacity: 0.7 },
+                ]}
                 onPress={handleBlock}
               >
-                <AppText variant="body" color={colors.danger}>Block {partnerName}</AppText>
+                <AppText variant="body" color={colors.danger} style={Platform.OS !== 'web' && { fontSize: 17 }}>
+                  Block {partnerName}
+                </AppText>
               </Pressable>
 
               <View style={styles.menuDivider} />
 
               <Pressable
-                style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.7 }]}
+                style={({ pressed }) => [
+                  styles.menuItem,
+                  Platform.OS !== 'web' && { paddingVertical: 22 },
+                  pressed && { opacity: 0.7 },
+                ]}
                 onPress={() => setMenuVisible(false)}
               >
-                <AppText variant="bodyMedium" color={colors.inkSoft} align="center">Cancel</AppText>
+                <AppText variant="bodyMedium" color={colors.inkSoft} align="center" style={Platform.OS !== 'web' && { fontSize: 17 }}>
+                  Cancel
+                </AppText>
               </Pressable>
             </View>
           </Pressable>
@@ -550,13 +574,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.lg,
+    paddingVertical: Platform.OS === 'web' ? spacing.lg : spacing.xl,
     paddingHorizontal: spacing.xl,
     gap: spacing.sm,
   },
   menuItemStar: {
-    fontSize: 16,
+    fontSize: Platform.OS === 'web' ? 16 : 20,
+    lineHeight: Platform.OS === 'web' ? 20 : 24,
     color: colors.accent,
+  },
+  menuItemText: {
+    fontSize: Platform.OS === 'web' ? 15 : 17,
+    lineHeight: Platform.OS === 'web' ? 22 : 24,
   },
   menuDivider: {
     height: 1,

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -234,13 +235,27 @@ export default function MatchesScreen() {
                   <View key={c.matchId}>
                     <Pressable
                       onPress={() => openChat(c)}
-                      style={({ pressed }) => [styles.thread, pressed && { opacity: 0.85 }]}
+                      style={({ pressed }) => [
+                        styles.thread,
+                        Platform.OS !== 'web' && { paddingVertical: spacing.lg },
+                        pressed && { opacity: 0.85 },
+                      ]}
                     >
                       <View style={styles.avatarWrap}>
                         {c.partnerPhoto ? (
-                          <Image source={{ uri: c.partnerPhoto }} style={styles.avatar} />
+                          <Image
+                            source={{ uri: c.partnerPhoto }}
+                            style={[
+                              styles.avatar,
+                              Platform.OS !== 'web' && { width: 60, height: 60, borderRadius: 30 },
+                            ]}
+                          />
                         ) : (
-                          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                          <View style={[
+                            styles.avatar,
+                            styles.avatarPlaceholder,
+                            Platform.OS !== 'web' && { width: 60, height: 60, borderRadius: 30 },
+                          ]}>
                             <AppText style={{ fontSize: 20, color: colors.inkFaint }}>?</AppText>
                           </View>
                         )}
@@ -327,11 +342,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.edge,
-    paddingVertical: spacing.md,
+    paddingVertical: Platform.OS === 'web' ? spacing.md : spacing.lg,
     gap: spacing.md,
   },
   avatarWrap: { position: 'relative' },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
+  avatar: {
+    width: Platform.OS === 'web' ? 56 : 60,
+    height: Platform.OS === 'web' ? 56 : 60,
+    borderRadius: Platform.OS === 'web' ? 28 : 30,
+  },
   avatarPlaceholder: {
     backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
@@ -357,7 +376,7 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: colors.rule,
-    marginLeft: spacing.edge + 56 + spacing.md,
+    marginLeft: spacing.edge + (Platform.OS === 'web' ? 56 : 60) + spacing.md,
   },
   badge: {
     minWidth: 22,

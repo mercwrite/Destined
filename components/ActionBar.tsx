@@ -1,9 +1,9 @@
 // ActionBar.tsx — undo / nope / like / star buttons under the swipe card.
 
 import React from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { colors, shadows } from '../theme';
 import { AppText } from './Text';
-import { colors, radii, shadows } from '../theme';
 
 interface ActionBarProps {
   onUndo?: () => void;
@@ -50,7 +50,8 @@ function ActionBtn({ glyph, onPress, size, tint, primary }: BtnProps) {
     >
       <AppText
         style={{
-          fontSize: size === 'lg' ? 26 : 18,
+          fontSize: size === 'lg' ? 26 : 20,
+          lineHeight: size === 'lg' ? 30 : 24,
           color: primary ? colors.white : (tint ?? colors.ink),
           fontWeight: '600',
         }}
@@ -66,9 +67,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+    gap: 20,
+    paddingVertical: Platform.OS === 'web' ? 18 : 14,
+    paddingHorizontal: 20,
   },
   btn: {
     alignItems: 'center',
