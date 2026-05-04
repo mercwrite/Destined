@@ -1,3 +1,11 @@
+import { useAuth } from '@/app/_layout';
+import MatchModal from '@/components/MatchModal';
+import ProfileCard, { type ProfileCardData } from '@/components/ProfileCard';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { AppText } from '@/components/Text';
+import { colors, radii, shadows, spacing } from '@/theme';
+import { supabase } from '@/utils/supabase';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,26 +15,16 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '@/app/_layout';
-import { supabase } from '@/utils/supabase';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { AppText } from '@/components/Text';
-import MatchModal from '@/components/MatchModal';
-import ProfileCard, { type ProfileCardData } from '@/components/ProfileCard';
-import { colors, radii, shadows, spacing } from '@/theme';
 
 const IS_WEB = Platform.OS === 'web';
 const NUM_COLS = IS_WEB ? 5 : 2;
 const GRID_PAD = IS_WEB ? spacing.edge : spacing.md;
 const GAP = spacing.sm;
-// Rows to keep visible on mobile without scrolling (header + safearea + tabbar ≈ 200px)
-const MOBILE_ROWS = 4;
-const MOBILE_CHROME = 200;
 
 function computeAge(dob: string | null): number | null {
   if (!dob) return null;
@@ -47,12 +45,11 @@ export default function LikesScreen() {
   const userId = session?.user?.id ?? null;
   const { width: winW, height: winH } = useWindowDimensions();
 
-  // Fixed card dimensions — always constant regardless of list length
   const effectiveW = IS_WEB ? Math.min(winW, 1100) : winW;
-  const cardW = Math.floor((effectiveW - 2 * GRID_PAD - (NUM_COLS - 1) * GAP) / NUM_COLS);
-  const cardH = IS_WEB
-    ? cardW  // square cards on web
-    : Math.floor((winH - MOBILE_CHROME - (MOBILE_ROWS - 1) * GAP - GRID_PAD) / MOBILE_ROWS);
+  const cardW = IS_WEB
+    ? Math.floor((effectiveW - 2 * GRID_PAD - (NUM_COLS - 1) * GAP) / NUM_COLS)
+    : Math.floor((effectiveW - 2 * GRID_PAD - GAP) / NUM_COLS);
+  const cardH = IS_WEB ? cardW : Math.floor(cardW * 1.4);
 
   const [likers, setLikers] = useState<ProfileCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,12 +174,12 @@ export default function LikesScreen() {
               Keep swiping — people who like you will appear here.
             </AppText>
           </View>
-        ) : (
+        ) : IS_WEB ? (
           <FlatList
             data={likers}
             keyExtractor={(item) => item.id}
             numColumns={NUM_COLS}
-            key={`${NUM_COLS}-${cardW}`}
+            key={String(NUM_COLS)}
             contentContainerStyle={[styles.grid, { paddingHorizontal: GRID_PAD }]}
             style={styles.gridList}
             columnWrapperStyle={{ gap: GAP }}
@@ -209,12 +206,8 @@ export default function LikesScreen() {
                     colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.68)']}
                     style={[StyleSheet.absoluteFill, styles.cardOverlay]}
                   >
-                    <AppText
-                      variant="bodySmall"
-                      numberOfLines={1}
-                      style={styles.cardName}
-                    >
-                      {item.name ?? 'Someone'}{age !== null ? `, ${age}` : ''}
+                    <AppText variant="bodySmall" numberOfLines={1} style={styles.cardName}>
+                      {item.name ?? 'Someone'}{computeAge(item.date_of_birth) !== null ? `, ${computeAge(item.date_of_birth)}` : ''}
                     </AppText>
                     {item.destination ? (
                       <AppText variant="caption" numberOfLines={1} style={styles.cardDest}>
@@ -226,6 +219,70 @@ export default function LikesScreen() {
               );
             }}
           />
+        ) : (
+          // Mobile: plain ScrollView with manual 2-column rows — avoids FlatList numColumns layout issues
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: GRID_PAD, paddingBottom: spacing.xxl }}
+            showsVerticalScrollIndicator={false}
+          >
+            {Array.from({ length: Math.ceil(likers.length / 2) }, (_, rowIdx) => {
+              const rowItems = likers.slice(rowIdx * 2, rowIdx * 2 + 2);
+              return (
+                <View
+                  key={rowIdx}
+                  style={{
+                    flexDirection: 'row',
+                    gap: GAP,
+                    marginBottom: GAP,
+                     // row = green
+                  }}
+                >
+                  {rowItems.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => setSelected(item)}
+                      style={{
+                        width: cardW,
+                        height: cardH,
+                        borderRadius: radii.md,
+                        overflow: 'hidden',
+                        backgroundColor: colors.surfaceSoft,
+                      }}
+                    >
+                      {/* Step 1: just the Image */}
+                      {item.photos[0]?.url ? (
+                        <Image
+                          source={{ uri: item.photos[0].url }}
+                          style={StyleSheet.absoluteFill}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={[StyleSheet.absoluteFill, styles.photoPlaceholder]}>
+                          <AppText style={{ fontSize: 32, color: colors.inkFaint }}>?</AppText>
+                        </View>
+                      )}
+                      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                        <LinearGradient
+                          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.68)']}
+                          style={{ flex: 1, justifyContent: 'flex-end', padding: spacing.sm, gap: 2 }}
+                        >
+                          <AppText variant="bodySmall" numberOfLines={1} style={styles.cardName}>
+                            {item.name ?? 'Someone'}
+                          </AppText>
+                          {item.destination ? (
+                            <AppText variant="caption" numberOfLines={1} style={styles.cardDest}>
+                              ✈ {item.destination}
+                            </AppText>
+                          ) : null}
+                        </LinearGradient>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              );
+            })}
+          </ScrollView>
         )}
       </SafeAreaView>
 

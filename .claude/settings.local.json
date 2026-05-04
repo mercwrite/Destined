@@ -26,7 +26,11 @@
       "Bash(mmdc --version)",
       "Bash(npx --yes @mermaid-js/mermaid-cli --version)",
       "Bash(command -v mmdc)",
-      "Bash(powershell.exe -Command \"Get-Command mmdc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")"
+      "Bash(powershell.exe -Command \"Get-Command mmdc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(C:/Users/rex24/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/scripts/start-server.sh *)",
+      "Bash(ls -d .worktrees)",
+      "Bash(ls -d worktrees)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in ['jest','scripts'] if k in d}, indent=2\\)\\)\")"
     ]
   }
 }

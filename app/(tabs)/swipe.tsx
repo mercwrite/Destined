@@ -1,3 +1,16 @@
+import { useAuth } from '@/app/_layout';
+import { ActionBar } from '@/components/ActionBar';
+import { Button } from '@/components/Button';
+import MatchModal from '@/components/MatchModal';
+import type { ProfileCardData } from '@/components/ProfileCard';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import type { SwipeCardRef } from '@/components/SwipeCard';
+import SwipeStack from '@/components/SwipeStack';
+import { AppText } from '@/components/Text';
+import { useSwipeQueue } from '@/hooks/useSwipeQueue';
+import { colors, radii, shadows, spacing } from '@/theme';
+import { supabase } from '@/utils/supabase';
+import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,20 +22,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useAuth } from '@/app/_layout';
-import { supabase } from '@/utils/supabase';
-import { useSwipeQueue } from '@/hooks/useSwipeQueue';
-import SwipeStack from '@/components/SwipeStack';
-import MatchModal from '@/components/MatchModal';
-import { ActionBar } from '@/components/ActionBar';
-import { ScreenHeader } from '@/components/ScreenHeader';
-import { AppText } from '@/components/Text';
-import { Button } from '@/components/Button';
-import { colors, radii, shadows, spacing, typography } from '@/theme';
-import type { SwipeCardRef } from '@/components/SwipeCard';
-import type { ProfileCardData } from '@/components/ProfileCard';
 
 const HOT_DESTINATIONS = ['Lisbon', 'Tokyo', 'Mexico City', 'Joshua Tree'];
 

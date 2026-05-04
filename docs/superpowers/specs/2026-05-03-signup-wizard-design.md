@@ -200,7 +200,6 @@ Follows existing app design system (`theme.ts`):
 ## Out of Scope
 
 - Phone number collection
-- Gender field during onboarding (editable later in profile)
 - Location city during onboarding (editable later in profile)
 - 2FA setup
 - Social sign-in (Google / Apple)

@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
-import SwipeCard, { SwipeCardRef } from '@/components/SwipeCard';
 import type { ProfileCardData } from '@/components/ProfileCard';
+import SwipeCard, { SwipeCardRef } from '@/components/SwipeCard';
+import { StyleSheet, View } from 'react-native';
 
 type Props = {
   profiles: ProfileCardData[];

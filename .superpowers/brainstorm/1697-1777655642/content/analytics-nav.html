@@ -1,0 +1,99 @@
+<h2>Analytics Navigation Structure</h2>
+<p class="subtitle">How should users navigate between the photo stats and likes graph?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f7f5f0;padding:16px;font-family:system-ui">
+      <div style="background:#fff;border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#a09a92;margin-bottom:8px">ANALYTICS</div>
+        <!-- Tab bar -->
+        <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:12px">
+          <div style="flex:1;text-align:center;padding:8px;font-size:13px;font-weight:600;color:#4291db;border-bottom:2px solid #4291db">📸 Photos</div>
+          <div style="flex:1;text-align:center;padding:8px;font-size:13px;color:#a09a92">📈 Likes</div>
+        </div>
+        <!-- Photo list -->
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f7f5f0;border-radius:8px">
+            <div style="width:36px;height:48px;background:#dbeafe;border-radius:6px;flex-shrink:0"></div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600;color:#1a1612">Photo 1</div>
+              <div style="font-size:11px;color:#5fa66f">▲ 72% like rate</div>
+            </div>
+            <div style="font-size:11px;color:#6b6660">#1</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f7f5f0;border-radius:8px">
+            <div style="width:36px;height:48px;background:#fce7e2;border-radius:6px;flex-shrink:0"></div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600;color:#1a1612">Photo 2</div>
+              <div style="font-size:11px;color:#e8a44a">▲ 48% like rate</div>
+            </div>
+            <div style="font-size:11px;color:#6b6660">#2</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Tabs in one screen</h3>
+      <p>"Photos" and "Likes Over Time" as tabs at the top of a single Analytics screen. Tap to switch.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f7f5f0;padding:16px;font-family:system-ui">
+      <div style="background:#fff;border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#a09a92;margin-bottom:8px">ANALYTICS — PHOTOS</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f7f5f0;border-radius:8px">
+            <div style="width:36px;height:48px;background:#dbeafe;border-radius:6px;flex-shrink:0"></div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600">Photo 1</div><div style="font-size:11px;color:#5fa66f">▲ 72%</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px;background:#f7f5f0;border-radius:8px">
+            <div style="width:36px;height:48px;background:#fce7e2;border-radius:6px;flex-shrink:0"></div>
+            <div style="flex:1"><div style="font-size:12px;font-weight:600">Photo 2</div><div style="font-size:11px;color:#e8a44a">▲ 48%</div></div>
+          </div>
+        </div>
+        <!-- Button at bottom -->
+        <div style="text-align:center;padding:8px 16px;background:#4291db;border-radius:999px;font-size:13px;font-weight:600;color:#fff">
+          View Likes Over Time →
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Linear push navigation</h3>
+      <p>Photo stats is the main screen. A button at the bottom pushes to the graph. Back button returns.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f7f5f0;padding:16px;font-family:system-ui">
+      <div style="background:#fff;border-radius:12px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08)">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#a09a92;margin-bottom:10px">YOUR PROFILE</div>
+        <!-- Two buttons -->
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#dbeafe;border-radius:10px">
+            <span style="font-size:18px">📸</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#2563a0">Photo Analytics</div>
+              <div style="font-size:11px;color:#6b6660">Impressions & swipe stats</div>
+            </div>
+            <span style="margin-left:auto;color:#4291db">›</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f0fdf4;border-radius:10px">
+            <span style="font-size:18px">📈</span>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#3d8b5e">Likes Over Time</div>
+              <div style="font-size:11px;color:#6b6660">2-week trend graph</div>
+            </div>
+            <span style="margin-left:auto;color:#5fa66f">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Two entry points</h3>
+      <p>Two separate buttons on the profile page. Each opens its own full screen directly.</p>
+    </div>
+  </div>
+
+</div>

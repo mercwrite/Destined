@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analytics Layout</title>
+<script src="../../../scripts/helper.js" defer></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f0ece6; font-family: system-ui, -apple-system, sans-serif; padding: 24px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+
+  h1 { font-size: 15px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #6b6660; margin-bottom: 6px; }
+  .caption { font-size: 12px; color: #a09a92; margin-bottom: 20px; }
+
+  /* Phone shell */
+  .phone { width: 320px; flex-shrink: 0; }
+  .phone-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #a09a92; margin-bottom: 8px; text-align: center; }
+  .phone-shell {
+    background: #fff;
+    border-radius: 36px;
+    padding: 16px 12px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.08);
+    min-height: 620px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Screen content */
+  .screen { flex: 1; display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; background: #f7f5f0; }
+
+  /* Header */
+  .screen-header { padding: 14px 16px 8px; background: #f7f5f0; }
+  .back-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .back-btn { font-size: 18px; color: #4291db; }
+  .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #a09a92; }
+  .screen-title { font-size: 22px; font-weight: 700; color: #1a1612; letter-spacing: -0.3px; }
+
+  /* Tabs */
+  .tab-bar { display: flex; border-bottom: 1px solid rgba(26,22,18,0.08); background: #f7f5f0; margin-top: 6px; }
+  .tab { flex: 1; text-align: center; padding: 8px 4px; font-size: 12px; font-weight: 600; color: #a09a92; border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab.active { color: #4291db; border-bottom-color: #4291db; }
+
+  /* Tab panels */
+  .panel { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .panel.hidden { display: none; }
+
+  /* Photo row */
+  .photo-row {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .rank { font-size: 13px; font-weight: 700; color: #a09a92; width: 16px; flex-shrink: 0; }
+  .rank.gold { color: #e8a44a; }
+  .rank.silver { color: #9b9b9b; }
+  .rank.bronze { color: #b8734a; }
+  .photo-thumb { width: 38px; height: 50px; border-radius: 6px; flex-shrink: 0; object-fit: cover; }
+  .photo-info { flex: 1; min-width: 0; }
+  .photo-name { font-size: 12px; font-weight: 600; color: #1a1612; margin-bottom: 2px; }
+  .like-bar-wrap { height: 4px; background: #f0f0f0; border-radius: 2px; margin-bottom: 3px; }
+  .like-bar { height: 4px; border-radius: 2px; }
+  .stat-row { display: flex; gap: 8px; }
+  .stat { font-size: 10px; color: #6b6660; }
+  .stat span { font-weight: 600; }
+
+  /* Bar chart (likes over time) */
+  .chart-container { background: #fff; border-radius: 12px; padding: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); flex: 1; }
+  .chart-title { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #a09a92; margin-bottom: 10px; }
+  .line-chart { position: relative; height: 120px; }
+  svg.chart { width: 100%; height: 100%; overflow: visible; }
+  .tooltip {
+    position: absolute;
+    background: #1a1612;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 6px;
+    pointer-events: none;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #1a1612;
+  }
+  .x-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .x-label { font-size: 9px; color: #a09a92; text-align: center; flex: 1; }
+
+  /* Profile tab (simplified) */
+  .profile-screen { flex: 1; display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; background: #f7f5f0; }
+  .photo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; padding: 8px 12px 0; }
+  .photo-cell { aspect-ratio: 3/4; border-radius: 6px; }
+  .photo-cell.filled { background: linear-gradient(135deg, #dbeafe, #c3d9f5); }
+  .photo-cell.empty { background: #f0f0f0; border: 1.5px dashed #d0d0d0; }
+  .analytics-btn {
+    margin: 8px 12px 0;
+    padding: 9px 14px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid rgba(26,22,18,0.08);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .analytics-btn-text { font-size: 12px; font-weight: 600; color: #1a1612; }
+  .analytics-btn-sub { font-size: 10px; color: #a09a92; }
+  .analytics-btn-icon { width: 28px; height: 28px; background: #dbeafe; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .chevron { margin-left: auto; font-size: 14px; color: #a09a92; }
+</style>
+</head>
+<body>
+
+<!-- Left: Profile with button placement -->
+<div class="phone">
+  <div class="phone-label">Profile Page</div>
+  <div class="phone-shell">
+    <div class="profile-screen">
+      <div class="screen-header">
+        <div class="eyebrow">Your profile</div>
+        <div class="screen-title">Edit profile</div>
+      </div>
+      <div style="padding: 6px 12px 0; font-size: 9px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: #a09a92;">Photos</div>
+      <div class="photo-grid">
+        <div class="photo-cell filled"></div>
+        <div class="photo-cell filled" style="background:linear-gradient(135deg,#fce7e2,#f5c9c9)"></div>
+        <div class="photo-cell empty"></div>
+        <div class="photo-cell empty"></div>
+        <div class="photo-cell empty"></div>
+        <div class="photo-cell empty"></div>
+        <div class="photo-cell empty"></div>
+        <div class="photo-cell empty"></div>
+        <div class="photo-cell empty"></div>
+      </div>
+      <!-- Analytics button directly below photo grid -->
+      <div class="analytics-btn">
+        <div class="analytics-btn-icon">📊</div>
+        <div>
+          <div class="analytics-btn-text">Analytics</div>
+          <div class="analytics-btn-sub">Photo stats &amp; likes trend</div>
+        </div>
+        <div class="chevron">›</div>
+      </div>
+      <!-- Rest of profile -->
+      <div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; opacity: 0.5;">
+        <div style="height: 16px; background: #e0e0e0; border-radius: 4px; width: 60%"></div>
+        <div style="height: 40px; background: #fff; border-radius: 8px; border: 1px solid #eee"></div>
+        <div style="height: 16px; background: #e0e0e0; border-radius: 4px; width: 40%; margin-top: 4px"></div>
+        <div style="height: 60px; background: #fff; border-radius: 8px; border: 1px solid #eee"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Middle: Analytics — Photos tab -->
+<div class="phone">
+  <div class="phone-label">Analytics — Photos Tab</div>
+  <div class="phone-shell">
+    <div class="screen">
+      <div class="screen-header">
+        <div class="back-row"><span class="back-btn">‹</span><span class="eyebrow">Profile</span></div>
+        <div class="screen-title">Analytics</div>
+        <div class="tab-bar">
+          <div class="tab active">📸 Photos</div>
+          <div class="tab">📈 Likes</div>
+        </div>
+      </div>
+      <div class="panel">
+        <!-- Stat summary -->
+        <div style="display:flex;gap:6px;margin-bottom:2px">
+          <div style="flex:1;background:#fff;border-radius:10px;padding:8px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="font-size:18px;font-weight:700;color:#4291db">247</div>
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-top:1px">Total Likes</div>
+          </div>
+          <div style="flex:1;background:#fff;border-radius:10px;padding:8px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="font-size:18px;font-weight:700;color:#1a1612">583</div>
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-top:1px">Impressions</div>
+          </div>
+          <div style="flex:1;background:#fff;border-radius:10px;padding:8px 10px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="font-size:18px;font-weight:700;color:#5fa66f">42%</div>
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-top:1px">Like Rate</div>
+          </div>
+        </div>
+
+        <!-- Photo 1 -->
+        <div class="photo-row">
+          <div class="rank gold">1</div>
+          <div class="photo-thumb" style="background:linear-gradient(135deg,#dbeafe,#c3d9f5)"></div>
+          <div class="photo-info">
+            <div class="photo-name">Photo 1</div>
+            <div class="like-bar-wrap"><div class="like-bar" style="width:58%;background:#4291db"></div></div>
+            <div class="stat-row">
+              <div class="stat">👁 <span>312</span></div>
+              <div class="stat">♥ <span>143</span></div>
+              <div class="stat">✕ <span>169</span></div>
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#4291db;flex-shrink:0">58%</div>
+        </div>
+
+        <!-- Photo 2 -->
+        <div class="photo-row">
+          <div class="rank silver">2</div>
+          <div class="photo-thumb" style="background:linear-gradient(135deg,#fce7e2,#f5c9c9)"></div>
+          <div class="photo-info">
+            <div class="photo-name">Photo 2</div>
+            <div class="like-bar-wrap"><div class="like-bar" style="width:42%;background:#4291db"></div></div>
+            <div class="stat-row">
+              <div class="stat">👁 <span>271</span></div>
+              <div class="stat">♥ <span>104</span></div>
+              <div class="stat">✕ <span>167</span></div>
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#4291db;flex-shrink:0">42%</div>
+        </div>
+
+        <!-- Photo 3 (no data) -->
+        <div class="photo-row" style="opacity:0.5">
+          <div class="rank">3</div>
+          <div class="photo-thumb" style="background:#f0f0f0;border:1.5px dashed #d0d0d0"></div>
+          <div class="photo-info">
+            <div class="photo-name">Photo 3</div>
+            <div style="font-size:10px;color:#a09a92;margin-top:2px">No data yet</div>
+          </div>
+          <div style="font-size:10px;color:#a09a92;flex-shrink:0">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Right: Analytics — Likes tab -->
+<div class="phone">
+  <div class="phone-label">Analytics — Likes Tab</div>
+  <div class="phone-shell">
+    <div class="screen">
+      <div class="screen-header">
+        <div class="back-row"><span class="back-btn">‹</span><span class="eyebrow">Profile</span></div>
+        <div class="screen-title">Analytics</div>
+        <div class="tab-bar">
+          <div class="tab">📸 Photos</div>
+          <div class="tab active">📈 Likes</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="chart-container">
+          <div class="chart-title">Likes Over Time</div>
+          <div class="line-chart" id="chartWrap">
+            <!-- Tooltip -->
+            <div class="tooltip" style="top:-28px;left:66%">23 likes</div>
+            <svg class="chart" viewBox="0 0 260 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#4291db" stop-opacity="0.2"/>
+                  <stop offset="100%" stop-color="#4291db" stop-opacity="0.0"/>
+                </linearGradient>
+              </defs>
+              <!-- Fill area -->
+              <path d="M0,90 L40,75 L80,60 L120,50 L160,30 L200,18 L240,40 L260,40 L260,100 L0,100 Z" fill="url(#fillGrad)"/>
+              <!-- Line -->
+              <polyline points="0,90 40,75 80,60 120,50 160,30 200,18 240,40" fill="none" stroke="#4291db" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+              <!-- Points -->
+              <circle cx="0" cy="90" r="3" fill="#4291db"/>
+              <circle cx="40" cy="75" r="3" fill="#4291db"/>
+              <circle cx="80" cy="60" r="3" fill="#4291db"/>
+              <circle cx="120" cy="50" r="3" fill="#4291db"/>
+              <circle cx="160" cy="30" r="3" fill="#4291db"/>
+              <!-- Active point (long-pressed) -->
+              <circle cx="200" cy="18" r="5" fill="#4291db" stroke="#fff" stroke-width="2"/>
+              <circle cx="240" cy="40" r="3" fill="#4291db"/>
+            </svg>
+          </div>
+          <div class="x-labels">
+            <div class="x-label">Apr 1</div>
+            <div class="x-label">Apr 15</div>
+            <div class="x-label">May 1</div>
+            <div class="x-label">May 15</div>
+            <div class="x-label">Jun 1</div>
+            <div class="x-label">Jun 15</div>
+            <div class="x-label">Jul 1</div>
+          </div>
+        </div>
+
+        <!-- Summary cards below chart -->
+        <div style="display:flex;gap:6px">
+          <div style="flex:1;background:#fff;border-radius:10px;padding:8px 10px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="font-size:16px;font-weight:700;color:#4291db">247</div>
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-top:1px">Total Likes</div>
+          </div>
+          <div style="flex:1;background:#fff;border-radius:10px;padding:8px 10px;box-shadow:0 1px 4px rgba(0,0,0,0.05)">
+            <div style="font-size:16px;font-weight:700;color:#5fa66f">+18%</div>
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#a09a92;margin-top:1px">vs Last Period</div>
+          </div>
+        </div>
+
+        <div style="font-size:10px;color:#a09a92;text-align:center;margin-top:4px">
+          Hold any point to see exact count
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

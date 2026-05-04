@@ -1,5 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
-
+import { AppText } from "@/components/Text";
+import { colors } from "@/theme";
+import { Image, StyleSheet, View } from "react-native";
 export default function WebHeader() {
   return (
     <View style={styles.header}>
@@ -8,7 +9,7 @@ export default function WebHeader() {
         style={styles.logo}
         resizeMode="contain"
       />
-      <Text style={styles.title}>Destined</Text>
+      <AppText style={{ fontSize: 26, color: colors.ink, lineHeight: 30 }}>Destined</AppText>
     </View>
   );
 }

@@ -1,0 +1,63 @@
+<h2>How does Analytics open?</h2>
+<p class="subtitle">When you tap the Analytics button on your profile page</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="push" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#e8e4df;padding:16px;font-family:system-ui;display:flex;gap:12px;align-items:flex-start">
+      <!-- Profile screen -->
+      <div style="flex:1;background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1)">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;color:#a09a92;margin-bottom:6px">YOUR PROFILE</div>
+        <div style="height:28px;background:#f0f0f0;border-radius:6px;margin-bottom:6px"></div>
+        <div style="height:28px;background:#f0f0f0;border-radius:6px;margin-bottom:8px"></div>
+        <div style="padding:6px 10px;background:#4291db;border-radius:999px;font-size:11px;font-weight:600;color:#fff;text-align:center">📊 Analytics →</div>
+      </div>
+      <div style="font-size:20px;align-self:center">→</div>
+      <!-- Analytics screen -->
+      <div style="flex:1;background:#fff;border-radius:10px;padding:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <span style="font-size:12px;color:#4291db">‹</span>
+          <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;color:#a09a92">ANALYTICS</div>
+        </div>
+        <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:8px">
+          <div style="flex:1;text-align:center;font-size:10px;font-weight:600;color:#4291db;border-bottom:2px solid #4291db;padding-bottom:4px">Photos</div>
+          <div style="flex:1;text-align:center;font-size:10px;color:#a09a92;padding-bottom:4px">Likes</div>
+        </div>
+        <div style="height:14px;background:#f0f0f0;border-radius:4px;margin-bottom:5px"></div>
+        <div style="height:14px;background:#f0f0f0;border-radius:4px;margin-bottom:5px"></div>
+        <div style="height:14px;background:#f0f0f0;border-radius:4px"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Full-screen push</h3>
+      <p>Analytics slides in as a new full screen with a back button. Feels like navigating deeper into the app.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="modal" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#e8e4df;padding:16px;font-family:system-ui;position:relative;min-height:160px">
+      <!-- Profile screen (dimmed behind) -->
+      <div style="background:#ccc;border-radius:10px;padding:10px;opacity:0.4;margin-bottom:0">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.2px;color:#a09a92;margin-bottom:6px">YOUR PROFILE</div>
+        <div style="height:20px;background:#f0f0f0;border-radius:6px;margin-bottom:5px"></div>
+        <div style="height:20px;background:#f0f0f0;border-radius:6px"></div>
+      </div>
+      <!-- Modal sheet sliding up -->
+      <div style="position:absolute;bottom:0;left:8px;right:8px;background:#fff;border-radius:16px 16px 10px 10px;padding:10px;box-shadow:0 -4px 20px rgba(0,0,0,0.15)">
+        <div style="width:30px;height:3px;background:#ccc;border-radius:2px;margin:0 auto 8px"></div>
+        <div style="display:flex;border-bottom:1px solid #eee;margin-bottom:8px">
+          <div style="flex:1;text-align:center;font-size:10px;font-weight:600;color:#4291db;border-bottom:2px solid #4291db;padding-bottom:4px">Photos</div>
+          <div style="flex:1;text-align:center;font-size:10px;color:#a09a92;padding-bottom:4px">Likes</div>
+        </div>
+        <div style="height:12px;background:#f0f0f0;border-radius:4px;margin-bottom:5px"></div>
+        <div style="height:12px;background:#f0f0f0;border-radius:4px;margin-bottom:5px"></div>
+        <div style="height:12px;background:#f0f0f0;border-radius:4px"></div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Bottom sheet modal</h3>
+      <p>Analytics rises from the bottom over the profile screen. Light and dismissible — swipe down to close. Common on Tinder/Instagram.</p>
+    </div>
+  </div>
+
+</div>
